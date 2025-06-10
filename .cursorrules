@@ -1,0 +1,188 @@
+# Hygromanteia - Projeto de Horas Planetárias
+
+## 🛠️ Stack Tecnológica
+
+### Frontend
+- **Next.js 15.2.4** - Framework React com App Router
+- **React 19.1.0** - Biblioteca principal com hooks modernos
+- **TypeScript** - Linguagem tipada para maior segurança
+- **Tailwind CSS** - Framework de CSS utilitário
+- **shadcn/ui** - Biblioteca de componentes baseada em Radix UI
+
+### Dependências UI/UX
+- **@radix-ui/react-slot** - Componentes compostos
+- **class-variance-authority (cva)** - Variantes de classe tipadas
+- **Lucide React** - Ícones modernos (se necessário)
+
+## 🏗️ Arquitetura e Padrões
+
+### Estrutura de Projeto
+- `/app` - App Router do Next.js 15
+- `/components/ui` - Componentes reutilizáveis do shadcn/ui
+- `/lib` - Utilitários e configurações
+- `/styles` - Estilos globais
+
+### Padrões React
+- **Hooks funcionais**: useState, useEffect, useCallback
+- **Componentes funcionais** com TypeScript
+- **Estados controlados** para navegação entre horas
+- **Effects com dependências** para atualizações automáticas
+- **Cleanup de timers** para performance
+
+### Gerenciamento de Estado
+- Estados locais com useState:
+  - `location` - Geolocalização do usuário
+  - `currentTime` - Hora atual (atualizada a cada segundo)
+  - `selectedHourIndex` - Hora selecionada para navegação
+  - `allPlanetaryHours` - Array completo das 24 horas planetárias
+  - Estados de loading e erro
+
+## 🎨 Design System
+
+### Componentes shadcn/ui Utilizados
+- **Button** - Com variantes: outline, ghost, link
+- **Tamanhos**: sm, icon
+- **Estados**: disabled, hover
+
+### Tipografia e Layout
+- **Tailwind classes**: Responsividade (md:, lg:)
+- **Flexbox**: Para layouts centralizados e alinhamentos
+- **Grid**: Se necessário para layouts complexos
+- **Spacing**: gap-1, gap-2, gap-4 para espaçamentos consistentes
+
+### Cores e Estética
+- **Paleta neutra**: text-gray-400, text-gray-500, text-gray-600, text-gray-900
+- **Hover states**: hover:text-gray-600, hover:bg-gray-100
+- **Background**: bg-white para tema claro
+
+## 🌍 APIs e Integrações
+
+### Geolocalização
+- **Navigator.geolocation** - API nativa do browser
+- **Configurações**: enableHighAccuracy, timeout, maximumAge
+- **Fallback**: Localização padrão (São Paulo)
+- **Error handling**: Tratamento de erros de permissão
+
+### API Externa
+- **BigDataCloud Reverse Geocoding** - Para obter nomes de cidades
+- **Sunrise-sunset.org** - Para horários precisos de nascer/pôr do sol
+- **Fallback calculations** - Cálculos aproximados baseados em latitude
+
+## 🪐 Domínio Específico (Astrologia/Magia)
+
+### Conceitos Implementados
+- **Ordem Caldéica dos Planetas**: Sol, Vênus, Mercúrio, Lua, Saturno, Júpiter, Marte
+- **24 Horas Planetárias** - 12 diurnas + 12 noturnas
+- **Símbolos Astrológicos**: Unicode (☉, ☾, ☿, ♀, ♂, ♃, ♄)
+- **Dias da Semana Clássicos**: Baseados nos planetas regentes
+
+### Cálculos Astronômicos
+- **Duração variável das horas**: Baseada no nascer/pôr do sol real
+- **Ajustes sazonais**: Considerando latitude e época do ano
+- **Precisão geográfica**: Uso de coordenadas reais
+
+## 🌐 Internacionalização
+
+### Idioma
+- **Português brasileiro** como padrão
+- **Preposições corretas**: "da Lua", "do Sol", "de Marte", etc.
+- **Formatação de datas**: dd/mm/yyyy em português
+- **Dias da semana**: Nomes completos em português
+
+### Formatação
+- **Horários**: Formato 24h (HH:mm)
+- **Ordinais**: 1ª, 2ª, 10ª hora (forma feminina)
+- **Símbolos Unicode**: Para navegação (←, →, ↺)
+
+## 🎯 UX/UI Principles
+
+### Interação
+- **Navegação intuitiva**: Setas direcionais para navegação temporal
+- **Feedback visual**: Estados hover e disabled
+- **Tooltips**: Explicações contextuais
+- **Reset fácil**: Botão para voltar ao "agora"
+
+### Responsividade
+- **Mobile-first**: Design que funciona em todos os tamanhos
+- **Breakpoints**: sm:, md:, lg: do Tailwind
+- **Texto escalável**: text-sm, text-lg, text-xl, text-3xl
+
+### Performance
+- **Timers otimizados**: setInterval com cleanup
+- **Estados de loading**: Feedback durante carregamento
+- **Error boundaries**: Tratamento gracioso de erros
+- **Caching**: maximumAge para geolocalização
+
+## 🧩 Padrões de Código
+
+### TypeScript
+- **Interfaces tipadas**: Location, PlanetaryHourInfo, SunriseSunsetData
+- **Type safety**: Props tipados, Record<string, string> para mappings
+- **Enum-like objects**: Para constantes (PLANETS, PLANET_SYMBOLS)
+
+### Naming Conventions
+- **camelCase**: Para variáveis e funções
+- **PascalCase**: Para interfaces e componentes
+- **SCREAMING_SNAKE_CASE**: Para constantes
+- **Descritivos**: Nomes que explicam a funcionalidade
+
+### Comentários
+- **Comentários em português**: Explicações claras do domínio
+- **JSX comments**: {/* Descrição das seções */}
+- **Documentação inline**: Para cálculos complexos
+
+## 🚀 Build e Deploy
+
+### Desenvolvimento
+- **npm run dev**: Servidor de desenvolvimento
+- **Hot reload**: Atualizações em tempo real
+- **TypeScript checking**: Verificação de tipos em tempo real
+- **Port fallback**: 3000 → 3001 se necessário
+
+### Produção
+- **Next.js optimizations**: Bundle splitting, tree shaking
+- **Static optimization**: Para melhor performance
+- **SEO friendly**: Metadata configurado
+
+## 📱 Recursos Modernos
+
+### Web APIs
+- **Geolocation API**: Para localização automática
+- **Fetch API**: Para requisições HTTP
+- **Date API**: Para manipulação de tempo
+- **CSS Custom Properties**: Se necessário
+
+### Acessibilidade
+- **Semantic HTML**: Uso correto de elementos
+- **ARIA labels**: Em tooltips e botões
+- **Keyboard navigation**: Suporte nativo dos componentes
+- **Screen reader friendly**: Textos descritivos
+
+## 🔧 Utils e Helpers
+
+### Funções Utilitárias
+- `formatTime()` - Formatação de horários
+- `formatOrdinal()` - Números ordinais em português
+- `getPlanetWithPreposition()` - Preposições corretas
+- `calculatePlanetaryHours()` - Cálculo das horas planetárias
+
+### Constantes
+- `PLANETS` - Ordem caldéica
+- `PLANET_SYMBOLS` - Símbolos Unicode
+- `PLANET_PREPOSITIONS` - Preposições em português
+- `DAYS_PT` / `DAYS_CLASSICAL` - Nomes dos dias
+
+---
+
+## 📋 Convenções do Projeto
+
+1. **Sempre responder em português**
+2. **Usar componentes shadcn/ui quando disponíveis**
+3. **Manter tipagem TypeScript rigorosa**
+4. **Implementar estados de loading e erro**
+5. **Considerar responsividade mobile-first**
+6. **Usar preposições corretas em português**
+7. **Manter símbolos Unicode para elementos visuais**
+8. **Implementar cleanup adequado de effects**
+9. **Usar naming conventions consistentes**
+10. **Documentar cálculos astronômicos complexos**
