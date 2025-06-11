@@ -970,7 +970,7 @@ export default function HygromanteiApp() {
       { name: "Harleianus", text: currentHourRecommendations.Harleianus },
       { name: "Monacensis", text: currentHourRecommendations.Monacensis },
       { name: "Gennadianus", text: currentHourRecommendations.Gennadianus }
-    ].filter(rec => rec.text && rec.text !== "(Missing)")
+    ]
 
     if (recommendations.length === 0) return null
 
