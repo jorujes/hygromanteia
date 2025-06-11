@@ -1,17 +1,43 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { CalendarIcon, MapPinIcon } from "lucide-react"
+import tzLookup from 'tz-lookup'
+import { DateTime } from 'luxon'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Location {
   latitude: number
   longitude: number
   city?: string
   state?: string
+  country?: string
+  timezone: string
+}
+
+interface LocationSuggestion {
+  display_name: string
+  lat: string
+  lon: string
+  address: {
+    city?: string
+    town?: string
+    village?: string
+    municipality?: string
+    state?: string
+    country?: string
+  }
+  status: string
 }
 
 interface PlanetaryHourInfo {
@@ -19,20 +45,34 @@ interface PlanetaryHourInfo {
   end: Date
   planet: string
   hourNumber: number
+  city: string
+  state: string
+  country: string
+  latitude: number
+  longitude: number
+  timezone?: string
 }
 
 interface SunriseSunsetData {
-  sunrise: string
-  sunset: string
-  solar_noon: string
-  day_length: number
-  civil_twilight_begin: string
-  civil_twilight_end: string
-  nautical_twilight_begin: string
-  nautical_twilight_end: string
-  astronomical_twilight_begin: string
-  astronomical_twilight_end: string
+  results: {
+    sunrise: string
+    sunset: string
+    solar_noon: string
+    day_length: string
+    civil_twilight_begin: string
+    civil_twilight_end: string
+    nautical_twilight_begin: string
+    nautical_twilight_end: string
+    astronomical_twilight_begin: string
+    astronomical_twilight_end: string
+  }
   status: string
+}
+
+interface LocalTimeData {
+  hours: number
+  minutes: number
+  seconds: number
 }
 
 interface PlanetaryHourData {
@@ -109,7 +149,7 @@ export default function HygromanteiApp() {
   const [location, setLocation] = useState<Location | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [currentHourInfo, setCurrentHourInfo] = useState<PlanetaryHourInfo | null>(null)
-  const [sunriseSunsetData, setSunriseSunsetData] = useState<{ sunrise: Date; sunset: Date } | null>(null)
+  const [sunriseSunsetData, setSunriseSunsetData] = useState<{ sunrise: DateTime; sunset: DateTime } | null>(null)
   const [loading, setLoading] = useState(true)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -124,6 +164,15 @@ export default function HygromanteiApp() {
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false)
   const [locationInput, setLocationInput] = useState("")
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false)
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([])
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+  const [citySearch, setCitySearch] = useState("")
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([])
+  const [isLocating, setIsLocating] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Carregar dados das horas planetárias
   useEffect(() => {
@@ -140,6 +189,21 @@ export default function HygromanteiApp() {
     loadPlanetaryData()
   }, [])
 
+  // Função para verificar estado da permissão de geolocalização
+  const checkGeolocationPermission = useCallback(async () => {
+    if (!navigator.permissions) {
+      return 'unknown'
+    }
+    
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' })
+      return result.state // 'granted', 'denied', 'prompt'
+    } catch (error) {
+      console.log("Erro ao verificar permissão de geolocalização:", error)
+      return 'unknown'
+    }
+  }, [])
+
   // Função para usar localização padrão
   const useDefaultLocation = useCallback(() => {
     setLocation({
@@ -147,8 +211,170 @@ export default function HygromanteiApp() {
       longitude: -46.6333,
       city: "São Paulo",
       state: "SP",
+      country: "Brasil",
+      timezone: "America/Sao_Paulo",
     })
   }, [])
+
+  // Função para solicitar geolocalização de forma otimizada
+  const requestGeolocation = useCallback(async () => {
+    setIsDetectingLocation(true)
+    
+    // Verificar se geolocalização está disponível
+    if (!navigator.geolocation) {
+      console.log("Geolocalização não suportada pelo navegador")
+      setIsGeolocationAvailable(false)
+      setGeolocationError("Geolocalização não suportada por este navegador.")
+      setIsDetectingLocation(false)
+      useDefaultLocation()
+      return
+    }
+
+    // Verificar estado da permissão primeiro
+    const permissionState = await checkGeolocationPermission()
+    console.log("Estado da permissão de geolocalização:", permissionState)
+
+         if (permissionState === 'denied') {
+       setGeolocationError("Permissão de geolocalização negada. Use o ícone de localização para inserir sua cidade manualmente.")
+       setIsDetectingLocation(false)
+       useDefaultLocation()
+       return
+     }
+
+    // Configurações otimizadas para diferentes cenários
+    const options = {
+      enableHighAccuracy: true, // Tentar obter localização mais precisa primeiro
+      timeout: 8000, // Timeout mais conservador (8 segundos)
+      maximumAge: 300000, // Cache por 5 minutos
+    }
+
+    const successCallback = async (position: GeolocationPosition) => {
+      const lat = position.coords.latitude
+      const lng = position.coords.longitude
+
+      console.log("Geolocalização obtida com sucesso:", { lat, lng, accuracy: position.coords.accuracy })
+
+      try {
+        // Usar API de geocoding reverso para obter cidade
+        const response = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`,
+        )
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        setLocation({
+          latitude: lat,
+          longitude: lng,
+          city: data.city || data.locality || "Cidade detectada",
+          state: data.principalSubdivision || "",
+          country: data.countryName || "",
+          timezone: tzLookup(lat, lng),
+        })
+                 setGeolocationError(null) // Limpar qualquer erro anterior
+         setIsDetectingLocation(false)
+      } catch (error) {
+        console.log("Erro ao obter nome da cidade, usando coordenadas:", error)
+        setLocation({
+          latitude: lat,
+          longitude: lng,
+          city: "Localização detectada",
+          state: "",
+          country: "Brasil",
+          timezone: "America/Sao_Paulo",
+        })
+                   setGeolocationError("Localização detectada, mas não foi possível obter o nome da cidade.")
+           setIsDetectingLocation(false)
+         }
+       }
+
+    const errorCallback = (error: GeolocationPositionError) => {
+      console.log("Erro na geolocalização:", error.message, "Código:", error.code)
+      
+      let errorMessage = ""
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = "Permissão de geolocalização negada. Use o ícone de localização para inserir sua cidade."
+          break
+        case error.POSITION_UNAVAILABLE:
+          // Não mostrar erro para posição não disponível, usar silenciosamente o padrão
+          errorMessage = ""
+          break
+        case error.TIMEOUT:
+          // Não mostrar erro para timeout, usar silenciosamente o padrão
+          errorMessage = ""
+          break
+        default:
+          // Não mostrar erro para outros casos, usar silenciosamente o padrão
+          errorMessage = ""
+          break
+      }
+      
+      // Só definir erro se houver mensagem (apenas para permissão negada)
+      if (errorMessage) {
+        setGeolocationError(errorMessage)
+      } else {
+        setGeolocationError(null)
+      }
+      setIsDetectingLocation(false)
+      useDefaultLocation()
+    }
+
+    try {
+      // Tentar obter localização com alta precisão primeiro
+      navigator.geolocation.getCurrentPosition(successCallback, (error) => {
+        // Se falhar com alta precisão, tentar com baixa precisão
+        if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
+          console.log("Tentando com baixa precisão...")
+          const fallbackOptions = {
+            enableHighAccuracy: false,
+            timeout: 6000, // Timeout mais curto para fallback
+            maximumAge: 300000,
+          }
+          
+          navigator.geolocation.getCurrentPosition(successCallback, errorCallback, fallbackOptions)
+        } else {
+          errorCallback(error)
+        }
+      }, options)
+         } catch (error) {
+       console.log("Erro geral na detecção de localização:", error)
+       setGeolocationError("Erro ao acessar a geolocalização.")
+       setIsDetectingLocation(false)
+       useDefaultLocation()
+     }
+  }, [useDefaultLocation, checkGeolocationPermission])
+
+  // Detectar localização e cidade - agora com delay para melhor UX
+  useEffect(() => {
+    const detectLocationWithDelay = async () => {
+      // Aguardar um pouco para a página carregar completamente
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Verificar se é o primeiro carregamento
+      const hasLocationStored = localStorage.getItem('hygromanteia-location-preference')
+      
+      if (hasLocationStored === 'default') {
+        // Se o usuário já escolheu usar localização padrão, não perguntar novamente
+        useDefaultLocation()
+        return
+      }
+
+      if (hasLocationStored === 'auto') {
+        // Se o usuário já permitiu auto-detecção, tentar novamente
+        await requestGeolocation()
+        return
+      }
+
+      // Primeira vez: tentar detectar automaticamente
+      await requestGeolocation()
+    }
+
+    detectLocationWithDelay()
+  }, [requestGeolocation, useDefaultLocation])
 
   // Função para buscar localização por nome
   const searchLocationByName = useCallback(async (locationName: string) => {
@@ -177,6 +403,8 @@ export default function HygromanteiApp() {
           longitude: parseFloat(result.lon),
           city: displayParts[0] || locationName,
           state: result.address?.state || displayParts[1] || "",
+          country: result.address?.country || "Brasil",
+          timezone: tzLookup(parseFloat(result.lat), parseFloat(result.lon)),
         })
         setIsLocationPickerOpen(false)
         setLocationInput("")
@@ -190,78 +418,6 @@ export default function HygromanteiApp() {
       setIsSearchingLocation(false)
     }
   }, [])
-
-  // Detectar localização e cidade
-  useEffect(() => {
-    const detectLocation = async () => {
-      // Verificar se geolocalização está disponível
-      if (!navigator.geolocation) {
-        console.log("Geolocalização não suportada pelo navegador")
-        setIsGeolocationAvailable(false)
-        useDefaultLocation()
-        return
-      }
-
-      // Configurações para geolocalização
-      const options = {
-        enableHighAccuracy: false, // Usar GPS menos preciso mas mais rápido
-        timeout: 10000, // 10 segundos de timeout
-        maximumAge: 300000, // Cache por 5 minutos
-      }
-
-      const successCallback = async (position: GeolocationPosition) => {
-        const lat = position.coords.latitude
-        const lng = position.coords.longitude
-
-        try {
-          // Usar API de geocoding reverso para obter cidade
-          const response = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`,
-          )
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-
-          const data = await response.json()
-
-          setLocation({
-            latitude: lat,
-            longitude: lng,
-            city: data.city || data.locality || "Cidade detectada",
-            state: data.principalSubdivision || "",
-          })
-          setGeolocationError(null) // Limpar qualquer erro anterior
-        } catch (error) {
-          console.log("Erro ao obter nome da cidade, usando coordenadas:", error)
-          setLocation({
-            latitude: lat,
-            longitude: lng,
-            city: "Localização detectada",
-            state: "",
-          })
-          setGeolocationError("Erro ao obter nome da cidade.")
-        }
-      }
-
-      const errorCallback = (error: GeolocationPositionError) => {
-        console.log("Erro na geolocalização:", error.message)
-        setGeolocationError(error.message)
-        useDefaultLocation()
-      }
-
-      try {
-        // Tentar obter localização
-        navigator.geolocation.getCurrentPosition(successCallback, errorCallback, options)
-      } catch (error) {
-        console.log("Erro geral na detecção de localização:", error)
-        setGeolocationError("Erro ao obter localização.")
-        useDefaultLocation()
-      }
-    }
-
-    detectLocation()
-  }, [useDefaultLocation])
 
   // Calcular horários aproximados de nascer e pôr do sol baseados na latitude
   const calculateApproximateSunriseSunset = (latitude: number): { sunrise: Date; sunset: Date } => {
@@ -308,27 +464,22 @@ export default function HygromanteiApp() {
     return { sunrise, sunset }
   }
 
-  // Obter horários de nascer e pôr do sol
+  // Obter horários de nascer e pôr do sol com correção de fuso horário
   useEffect(() => {
     const fetchSunriseSunset = async () => {
       if (!location) return
 
       try {
-        const today = new Date()
-        const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+        const today = DateTime.now().setZone(location.timezone)
+        const formattedDate = today.toFormat("yyyy-MM-dd")
 
         console.log(
-          `Buscando dados de nascer/pôr do sol para: ${location.latitude}, ${location.longitude}, data: ${formattedDate}`,
+          `Buscando dados de nascer/pôr do sol para: ${location.latitude}, ${location.longitude}, data: ${formattedDate} no fuso ${location.timezone}`
         )
 
+        // Buscar dados de nascer/pôr do sol
         const response = await fetch(
-          `https://api.sunrise-sunset.org/json?lat=${location.latitude}&lng=${location.longitude}&date=${formattedDate}&formatted=0`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-          },
+          `https://api.sunrise-sunset.org/json?lat=${location.latitude}&lng=${location.longitude}&date=${formattedDate}&formatted=0`
         )
 
         if (!response.ok) {
@@ -336,35 +487,42 @@ export default function HygromanteiApp() {
         }
 
         const data = await response.json()
-        console.log("Resposta da API:", data)
+        console.log("Resposta da API sunrise-sunset:", data)
 
-        if (data.results) {
-          const sunriseUTC = new Date(data.results.sunrise)
-          const sunsetUTC = new Date(data.results.sunset)
+        if (data.results && data.status === "OK") {
+          // As strings da API são sempre em UTC. O Luxon fará a mágica.
+          const sunriseUTC = DateTime.fromISO(data.results.sunrise, {
+            zone: "utc",
+          })
+          const sunsetUTC = DateTime.fromISO(data.results.sunset, {
+            zone: "utc",
+          })
 
-          console.log("Nascer do sol UTC:", sunriseUTC.toISOString())
-          console.log("Pôr do sol UTC:", sunsetUTC.toISOString())
+          // Converter para o fuso horário correto da localização
+          const sunriseLocal = sunriseUTC.setZone(location.timezone)
+          const sunsetLocal = sunsetUTC.setZone(location.timezone)
 
-          // Converter para horário local
-          const sunriseLocal = new Date(sunriseUTC)
-          const sunsetLocal = new Date(sunsetUTC)
-
-          console.log("Nascer do sol local:", sunriseLocal.toLocaleTimeString())
-          console.log("Pôr do sol local:", sunsetLocal.toLocaleTimeString())
+          console.log(
+            "Nascer do sol (horário local da região):",
+            sunriseLocal.toFormat("HH:mm:ss")
+          )
+          console.log(
+            "Pôr do sol (horário local da região):",
+            sunsetLocal.toFormat("HH:mm:ss")
+          )
 
           setSunriseSunsetData({ sunrise: sunriseLocal, sunset: sunsetLocal })
           setApiError(null)
         } else {
-          throw new Error("API retornou dados inválidos")
+          throw new Error("API retornou dados inválidos ou erro de status.")
         }
       } catch (error) {
         console.log("Erro ao obter horários de nascer/pôr do sol:", error)
         setApiError(`${error}`)
 
-        // Usar cálculo aproximado baseado na latitude
-        const approximateData = calculateApproximateSunriseSunset(location.latitude)
-        console.log("Usando horários aproximados:", approximateData)
-        setSunriseSunsetData(approximateData)
+        // O fallback para cálculo aproximado pode ser mantido se desejado,
+        // mas a API é geralmente confiável. Por enquanto, apenas logamos o erro.
+        setSunriseSunsetData(null) // Limpar dados antigos
       }
     }
 
@@ -383,57 +541,78 @@ export default function HygromanteiApp() {
 
   // Calcular horas planetárias baseadas no horário real do nascer/pôr do sol
   const calculatePlanetaryHours = (date: Date): PlanetaryHourInfo[] => {
-    if (!sunriseSunsetData) return []
+    if (!sunriseSunsetData || !location) return []
 
     const { sunrise, sunset } = sunriseSunsetData
+    const dateToCalculate = DateTime.fromJSDate(date, {
+      zone: location.timezone,
+    })
 
-    // Ajustar para o dia atual
-    const todaySunrise = new Date(sunrise)
-    todaySunrise.setFullYear(date.getFullYear(), date.getMonth(), date.getDate())
+    // Assegurar que as datas de nascer e por do sol correspondem ao dia selecionado
+    const todaySunrise = sunrise.set({
+      year: dateToCalculate.year,
+      month: dateToCalculate.month,
+      day: dateToCalculate.day,
+    })
+    const todaySunset = sunset.set({
+      year: dateToCalculate.year,
+      month: dateToCalculate.month,
+      day: dateToCalculate.day,
+    })
 
-    const todaySunset = new Date(sunset)
-    todaySunset.setFullYear(date.getFullYear(), date.getMonth(), date.getDate())
+    const dayDuration = todaySunset.diff(todaySunrise)
+    const nightDuration = dayDuration.negate().plus({ hours: 24 })
 
-    // Se já passou do pôr do sol, calcular para o próximo ciclo
-    const isNight = date > todaySunset || date < todaySunrise
-
-    const dayDuration = todaySunset.getTime() - todaySunrise.getTime()
-    const nightDuration = 24 * 60 * 60 * 1000 - dayDuration
-
-    const dayHourDuration = dayDuration / 12 // 12 horas planetárias do dia
-    const nightHourDuration = nightDuration / 12 // 12 horas planetárias da noite
+    const dayHourDuration = dayDuration.as("milliseconds") / 12
+    const nightHourDuration = nightDuration.as("milliseconds") / 12
 
     const hours: PlanetaryHourInfo[] = []
-    const dayOfWeek = date.getDay()
+    const dayOfWeek = dateToCalculate.weekday % 7 // Luxon weekday: 1=Seg, 7=Dom. Ajuste para 0=Dom.
 
     // Obter o índice do planeta regente do dia
     const firstPlanetIndex = DAY_TO_PLANET_INDEX[dayOfWeek]
 
     // Horas do dia (1-12)
     for (let i = 0; i < 12; i++) {
-      const start = new Date(todaySunrise.getTime() + i * dayHourDuration)
-      const end = new Date(todaySunrise.getTime() + (i + 1) * dayHourDuration)
+      const start = todaySunrise.plus({ milliseconds: i * dayHourDuration })
+      const end = todaySunrise.plus({
+        milliseconds: (i + 1) * dayHourDuration,
+      })
       const planetIndex = (firstPlanetIndex + i) % 7
 
       hours.push({
-        start,
-        end,
+        start: start.toJSDate(),
+        end: end.toJSDate(),
         planet: PLANETS[planetIndex],
         hourNumber: i + 1,
+        city: location.city || "",
+        state: location.state || "",
+        country: location.country || "Brasil",
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timezone: location.timezone,
       })
     }
 
     // Horas da noite (13-24)
     for (let i = 0; i < 12; i++) {
-      const start = new Date(todaySunset.getTime() + i * nightHourDuration)
-      const end = new Date(todaySunset.getTime() + (i + 1) * nightHourDuration)
+      const start = todaySunset.plus({ milliseconds: i * nightHourDuration })
+      const end = todaySunset.plus({
+        milliseconds: (i + 1) * nightHourDuration,
+      })
       const planetIndex = (firstPlanetIndex + 12 + i) % 7
 
       hours.push({
-        start,
-        end,
+        start: start.toJSDate(),
+        end: end.toJSDate(),
         planet: PLANETS[planetIndex],
         hourNumber: i + 13,
+        city: location.city || "",
+        state: location.state || "",
+        country: location.country || "Brasil",
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timezone: location.timezone,
       })
     }
 
@@ -450,12 +629,17 @@ export default function HygromanteiApp() {
       const planetaryHours = calculatePlanetaryHours(dateToUse)
       setAllPlanetaryHours(planetaryHours)
 
-      // Encontrar a hora planetária atual
+      // Obter o horário atual na localização selecionada
+      const currentTimeInLocationTimezone = DateTime.now()
+        .setZone(location.timezone)
+        .toJSDate()
+
+      // Encontrar a hora planetária atual usando o horário local da cidade
       let currentHour = null
       let currentHourIndex = -1
       for (let i = 0; i < planetaryHours.length; i++) {
         const hour = planetaryHours[i]
-        if (currentTime >= hour.start && currentTime < hour.end) {
+        if (currentTimeInLocationTimezone >= hour.start && currentTimeInLocationTimezone < hour.end) {
           currentHour = hour
           currentHourIndex = i
           break
@@ -523,10 +707,11 @@ export default function HygromanteiApp() {
 
     const city = location.city || "Cidade não identificada"
     const state = location.state || ""
+    const country = location.country || "Brasil"
 
     // Se temos estado, mostrar no formato "Cidade - Estado"
     if (state) {
-      return `${city} - ${state}`
+      return `${city} - ${state} - ${country}`
     }
 
     // Se não temos estado, mostrar apenas a cidade
@@ -534,11 +719,10 @@ export default function HygromanteiApp() {
   }
 
   const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
+    if (!location?.timezone) return "--:--"
+    return DateTime.fromJSDate(date)
+      .setZone(location.timezone)
+      .toFormat("HH:mm")
   }
 
   // Ex.: 1ª, 2ª, 10ª hora (forma feminina porque "hora")
@@ -602,18 +786,172 @@ export default function HygromanteiApp() {
     }
   }
 
-  const handleLocationSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (locationInput.trim()) {
-      searchLocationByName(locationInput.trim())
+  // Função handleLocationSubmit removida - agora usamos autocomplete
+
+  // Função para tentar detectar localização novamente (acionada pelo usuário)
+  const retryGeolocation = useCallback(async () => {
+    // Salvar preferência do usuário para auto-detecção
+    localStorage.setItem('hygromanteia-location-preference', 'auto')
+    
+    // Limpar erro anterior
+    setGeolocationError(null)
+    
+    // Fechar popover
+    setIsLocationPickerOpen(false)
+    
+    // Tentar detectar localização
+    await requestGeolocation()
+  }, [requestGeolocation])
+
+  // Função para usar localização padrão permanentemente
+  const useDefaultPermanently = useCallback(() => {
+    localStorage.setItem('hygromanteia-location-preference', 'default')
+    useDefaultLocation()
+  }, [useDefaultLocation])
+
+  // Função para buscar sugestões de autocomplete
+  const searchLocationSuggestions = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setLocationSuggestions([])
+      setShowSuggestions(false)
+      return
     }
-  }
+
+    setIsLoadingSuggestions(true)
+
+    try {
+      // Usar API do Nominatim (OpenStreetMap) para autocomplete
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=br,us,uk,fr,de,es,it,pt,ca,au,ar,cl,mx,co,pe,uy,py,bo,ec,ve,gy,sr,gf`,
+        {
+          headers: {
+            'User-Agent': 'Hygromanteia App'
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Erro na busca de sugestões')
+      }
+
+      const data = await response.json()
+      setLocationSuggestions(data)
+      setShowSuggestions(true)
+      setSelectedSuggestionIndex(-1) // Reset seleção
+    } catch (error) {
+      console.error('Erro ao buscar sugestões:', error)
+      setLocationSuggestions([])
+      setShowSuggestions(false)
+      setSelectedSuggestionIndex(-1)
+    } finally {
+      setIsLoadingSuggestions(false)
+    }
+  }, [])
+
+  // Função para selecionar uma sugestão
+  const selectLocationSuggestion = useCallback((suggestion: LocationSuggestion) => {
+    // Extrair nome da cidade de forma mais inteligente
+    const city = suggestion.address.city || 
+                 suggestion.address.town || 
+                 suggestion.address.village || 
+                 suggestion.address.municipality ||
+                 // Pegar a primeira parte do display_name como fallback
+                 suggestion.display_name.split(',')[0].trim()
+                 
+    const state = suggestion.address.state || ''
+    const country = suggestion.address.country || ''
+
+    console.log('Selecionando localização:', { 
+      city, 
+      state, 
+      country, 
+      fullAddress: suggestion.address,
+      displayName: suggestion.display_name 
+    })
+
+    const newLocation: Location = {
+      latitude: parseFloat(suggestion.lat),
+      longitude: parseFloat(suggestion.lon),
+      city: city,
+      state: state || country,
+      country: country,
+      timezone: tzLookup(parseFloat(suggestion.lat), parseFloat(suggestion.lon)),
+    }
+
+    setLocation(newLocation)
+    setLocationInput("")
+    setLocationSuggestions([])
+    setShowSuggestions(false)
+    setSelectedSuggestionIndex(-1)
+    setIsLocationPickerOpen(false)
+  }, [])
+
+  // Debounce para busca de sugestões
+  useEffect(() => {
+    if (!locationInput || locationInput.length < 3) {
+      setLocationSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchLocationSuggestions(locationInput)
+    }, 500) // 500ms de delay
+
+    return () => clearTimeout(timeoutId)
+  }, [locationInput, searchLocationSuggestions])
+
+  // Função para lidar com mudanças no input de localização
+  const handleLocationInputChange = useCallback((value: string) => {
+    setLocationInput(value)
+    setSelectedSuggestionIndex(-1) // Reset seleção
+    if (value.length === 0) {
+      setLocationSuggestions([])
+      setShowSuggestions(false)
+    }
+  }, [])
+
+  // Função para lidar com teclas no input de localização
+  const handleLocationInputKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!showSuggestions || locationSuggestions.length === 0) return
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedSuggestionIndex(prev => 
+          prev < locationSuggestions.length - 1 ? prev + 1 : 0
+        )
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : locationSuggestions.length - 1
+        )
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < locationSuggestions.length) {
+          selectLocationSuggestion(locationSuggestions[selectedSuggestionIndex])
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setShowSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+        break
+    }
+  }, [showSuggestions, locationSuggestions, selectedSuggestionIndex, selectLocationSuggestion])
 
   // Calcular progresso da hora atual (0-100%)
   const calculateHourProgress = (): number => {
-    if (!currentHourInfo) return 0
+    if (!currentHourInfo || !location?.timezone) return 0
     
-    const now = currentTime.getTime()
+    // Usar o horário atual na cidade selecionada
+    const now = DateTime.now()
+      .setZone(location.timezone)
+      .toJSDate()
+      .getTime()
+      
     const start = currentHourInfo.start.getTime()
     const end = currentHourInfo.end.getTime()
     
@@ -763,52 +1101,148 @@ export default function HygromanteiApp() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0.5 hover:bg-gray-100 self-start"
-                  title="Alterar localização"
+                  className={`h-auto p-0.5 hover:bg-gray-100 self-start ${geolocationError ? 'text-orange-500' : ''}`}
+                  title={geolocationError ? `Erro de localização: ${geolocationError}` : "Alterar localização"}
                 >
-                  <MapPinIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  <MapPinIcon className={`h-4 w-4 ${geolocationError ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`} />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4" align="center">
-                <form onSubmit={handleLocationSubmit} className="space-y-3">
+                <div className="space-y-4">
+                  {/* Seção de auto-detecção */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Digite o nome da cidade:
+                      Detectar automaticamente:
                     </label>
-                    <Input
-                      type="text"
-                      placeholder="Ex: Rio de Janeiro, London, Paris..."
-                      value={locationInput}
-                      onChange={(e) => setLocationInput(e.target.value)}
-                      disabled={isSearchingLocation}
-                      className="w-full"
-                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={retryGeolocation}
+                        disabled={isDetectingLocation}
+                        className="flex-1"
+                        title="Detectar minha localização atual"
+                      >
+                        {isDetectingLocation ? "Detectando..." : "📍 Detectar localização"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={useDefaultPermanently}
+                        title="Usar São Paulo como padrão"
+                      >
+                        Usar SP
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={!locationInput.trim() || isSearchingLocation}
-                      className="flex-1"
-                    >
-                      {isSearchingLocation ? "Buscando..." : "Buscar"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsLocationPickerOpen(false)
-                        setLocationInput("")
-                      }}
-                    >
-                      Cancelar
-                    </Button>
+                  
+                  <div className="text-center text-sm text-gray-500">ou</div>
+                  
+                  {/* Seção de busca manual com autocomplete */}
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Digite o nome da cidade:
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Use as setas ↑↓ para navegar e Enter para selecionar
+                      </p>
+                      <Input
+                        type="text"
+                        placeholder="Ex: Rio de Janeiro, London, Paris..."
+                        value={locationInput}
+                        onChange={(e) => handleLocationInputChange(e.target.value)}
+                        onKeyDown={handleLocationInputKeyDown}
+                        disabled={isSearchingLocation}
+                        className="w-full"
+                        autoComplete="off"
+                      />
+                      
+                      {/* Indicador de carregamento */}
+                      {isLoadingSuggestions && (
+                        <div className="absolute right-3 top-9 text-gray-400">
+                          <span className="text-sm">🔍</span>
+                        </div>
+                      )}
+                      
+                      {/* Lista de sugestões */}
+                      {showSuggestions && locationSuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                          {locationSuggestions.map((suggestion, index) => {
+                            // Usar a mesma lógica da função selectLocationSuggestion
+                            const city = suggestion.address.city || 
+                                        suggestion.address.town || 
+                                        suggestion.address.village || 
+                                        suggestion.address.municipality ||
+                                        suggestion.display_name.split(',')[0].trim()
+                            const state = suggestion.address.state || ''
+                            const country = suggestion.address.country || ''
+                            const displayText = `${city}${state ? `, ${state}` : ''}${country ? `, ${country}` : ''}`
+                            
+                            return (
+                              <button
+                                key={index}
+                                type="button"
+                                className={`w-full px-3 py-2 text-left focus:outline-none first:rounded-t-md last:rounded-b-md ${
+                                  index === selectedSuggestionIndex 
+                                    ? 'bg-blue-100 text-blue-900' 
+                                    : 'hover:bg-gray-100 focus:bg-gray-100'
+                                }`}
+                                onClick={() => selectLocationSuggestion(suggestion)}
+                                onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                              >
+                                <div className={`text-sm font-medium ${
+                                  index === selectedSuggestionIndex ? 'text-blue-900' : 'text-gray-900'
+                                }`}>
+                                  {displayText}
+                                </div>
+                                <div className={`text-xs truncate ${
+                                  index === selectedSuggestionIndex ? 'text-blue-700' : 'text-gray-500'
+                                }`}>
+                                  {suggestion.display_name}
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* Mensagem quando não há sugestões */}
+                      {showSuggestions && locationSuggestions.length === 0 && !isLoadingSuggestions && locationInput.length >= 3 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
+                          <p className="text-sm text-gray-500">Nenhuma cidade encontrada</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setIsLocationPickerOpen(false)
+                          setLocationInput("")
+                          setLocationSuggestions([])
+                          setShowSuggestions(false)
+                        }}
+                        className="flex-1"
+                      >
+                        Fechar
+                      </Button>
+                    </div>
                   </div>
-                </form>
+                </div>
               </PopoverContent>
             </Popover>
-            <p className="text-base md:text-lg text-gray-600 tracking-tight">{getFormattedLocation()}</p>
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-base md:text-lg text-gray-600 tracking-tight">{getFormattedLocation()}</p>
+              {geolocationError && (
+                <p className="text-xs text-orange-600 max-w-md text-center">{geolocationError}</p>
+              )}
+            </div>
           </div>
           
           {/* Recomendações dos manuscritos */}
