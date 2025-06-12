@@ -206,15 +206,40 @@ export default function HygromanteiApp() {
 
   // Função para usar localização padrão
   const useDefaultLocation = useCallback(() => {
-    setLocation({
+    const newTimezone = "America/Sao_Paulo"
+    
+    const newLocation: Location = {
       latitude: -23.5505,
       longitude: -46.6333,
       city: "São Paulo",
       state: "SP",
       country: "Brasil",
-      timezone: "America/Sao_Paulo",
-    })
-  }, [])
+      timezone: newTimezone,
+    }
+
+    // Verificar se precisamos ajustar a data para o "hoje" da nova localização
+    const currentSelectedDate = selectedDate
+    const todayInBrowser = new Date()
+    const todayInNewLocation = DateTime.now().setZone(newTimezone).toJSDate()
+    
+    // Se estávamos vendo o "hoje" do browser e não estamos navegando manualmente
+    const wasViewingToday = currentSelectedDate.toDateString() === todayInBrowser.toDateString()
+    
+    if (wasViewingToday && !isManuallyNavigating) {
+      // Verificar se o "hoje" na nova localização é diferente
+      const newLocationDateString = todayInNewLocation.toDateString()
+      const currentDateString = currentSelectedDate.toDateString()
+      
+      if (newLocationDateString !== currentDateString) {
+        // Atualizar para o "hoje" da nova localização
+        setSelectedDate(todayInNewLocation)
+        setIsManuallyNavigating(false) // Manter no modo automático
+        setSelectedHourIndex(null) // Reset para encontrar a hora atual
+      }
+    }
+
+    setLocation(newLocation)
+  }, [selectedDate, isManuallyNavigating])
 
   // Função para solicitar geolocalização de forma otimizada
   const requestGeolocation = useCallback(async () => {
@@ -266,14 +291,39 @@ export default function HygromanteiApp() {
 
         const data = await response.json()
 
-        setLocation({
+        const newTimezone = tzLookup(lat, lng)
+        
+        const newLocation: Location = {
           latitude: lat,
           longitude: lng,
           city: data.city || data.locality || "Cidade detectada",
           state: data.principalSubdivision || "",
           country: data.countryName || "",
-          timezone: tzLookup(lat, lng),
-        })
+          timezone: newTimezone,
+        }
+
+        // Verificar se precisamos ajustar a data para o "hoje" da nova localização
+        const currentSelectedDate = selectedDate
+        const todayInBrowser = new Date()
+        const todayInNewLocation = DateTime.now().setZone(newTimezone).toJSDate()
+        
+        // Se estávamos vendo o "hoje" do browser e não estamos navegando manualmente
+        const wasViewingToday = currentSelectedDate.toDateString() === todayInBrowser.toDateString()
+        
+        if (wasViewingToday && !isManuallyNavigating) {
+          // Verificar se o "hoje" na nova localização é diferente
+          const newLocationDateString = todayInNewLocation.toDateString()
+          const currentDateString = currentSelectedDate.toDateString()
+          
+          if (newLocationDateString !== currentDateString) {
+            // Atualizar para o "hoje" da nova localização
+            setSelectedDate(todayInNewLocation)
+            setIsManuallyNavigating(false) // Manter no modo automático
+            setSelectedHourIndex(null) // Reset para encontrar a hora atual
+          }
+        }
+
+        setLocation(newLocation)
                  setGeolocationError(null) // Limpar qualquer erro anterior
          setIsDetectingLocation(false)
       } catch (error) {
@@ -346,7 +396,7 @@ export default function HygromanteiApp() {
        setIsDetectingLocation(false)
        useDefaultLocation()
      }
-  }, [useDefaultLocation, checkGeolocationPermission])
+  }, [useDefaultLocation, checkGeolocationPermission, selectedDate, isManuallyNavigating])
 
   // Detectar localização e cidade - agora com delay para melhor UX
   useEffect(() => {
@@ -822,7 +872,7 @@ export default function HygromanteiApp() {
     try {
       // Usar API do Nominatim (OpenStreetMap) para autocomplete
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=br,us,uk,fr,de,es,it,pt,ca,au,ar,cl,mx,co,pe,uy,py,bo,ec,ve,gy,sr,gf`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=us,cn,jp,de,gb,in,fr,it,ca,ru,br,au,es,mx,il,kr`,
         {
           headers: {
             'User-Agent': 'Hygromanteia App'
@@ -869,13 +919,36 @@ export default function HygromanteiApp() {
       displayName: suggestion.display_name 
     })
 
+    const newTimezone = tzLookup(parseFloat(suggestion.lat), parseFloat(suggestion.lon))
+    
     const newLocation: Location = {
       latitude: parseFloat(suggestion.lat),
       longitude: parseFloat(suggestion.lon),
       city: city,
       state: state || country,
       country: country,
-      timezone: tzLookup(parseFloat(suggestion.lat), parseFloat(suggestion.lon)),
+      timezone: newTimezone,
+    }
+
+    // Verificar se precisamos ajustar a data para o "hoje" da nova localização
+    const currentSelectedDate = selectedDate
+    const todayInBrowser = new Date()
+    const todayInNewLocation = DateTime.now().setZone(newTimezone).toJSDate()
+    
+    // Se estávamos vendo o "hoje" do browser e não estamos navegando manualmente
+    const wasViewingToday = currentSelectedDate.toDateString() === todayInBrowser.toDateString()
+    
+    if (wasViewingToday && !isManuallyNavigating) {
+      // Verificar se o "hoje" na nova localização é diferente
+      const newLocationDateString = todayInNewLocation.toDateString()
+      const currentDateString = currentSelectedDate.toDateString()
+      
+      if (newLocationDateString !== currentDateString) {
+        // Atualizar para o "hoje" da nova localização
+        setSelectedDate(todayInNewLocation)
+        setIsManuallyNavigating(false) // Manter no modo automático
+        setSelectedHourIndex(null) // Reset para encontrar a hora atual
+      }
     }
 
     setLocation(newLocation)
@@ -884,7 +957,7 @@ export default function HygromanteiApp() {
     setShowSuggestions(false)
     setSelectedSuggestionIndex(-1)
     setIsLocationPickerOpen(false)
-  }, [])
+  }, [selectedDate, isManuallyNavigating])
 
   // Debounce para busca de sugestões
   useEffect(() => {
