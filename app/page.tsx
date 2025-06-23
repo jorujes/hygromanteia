@@ -173,6 +173,7 @@ export default function HygromanteiApp() {
   const [citySuggestions, setCitySuggestions] = useState<any[]>([])
   const [isLocating, setIsLocating] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const hasInitialized = useRef(false)
 
   // Carregar dados das horas planetárias
   useEffect(() => {
@@ -590,7 +591,7 @@ export default function HygromanteiApp() {
   }, [])
 
   // Calcular horas planetárias baseadas no horário real do nascer/pôr do sol
-  const calculatePlanetaryHours = (date: Date): PlanetaryHourInfo[] => {
+  const calculatePlanetaryHours = useCallback((date: Date): PlanetaryHourInfo[] => {
     if (!sunriseSunsetData || !location) return []
 
     const { sunrise, sunset } = sunriseSunsetData
@@ -667,7 +668,7 @@ export default function HygromanteiApp() {
     }
 
     return hours
-  }
+  }, [sunriseSunsetData, location])
 
   // Encontrar hora planetária atual
   useEffect(() => {
@@ -697,8 +698,10 @@ export default function HygromanteiApp() {
       }
 
       // Verificar se estamos vendo a data de hoje
-      const today = new Date()
-      const isViewingToday = selectedDate.toDateString() === today.toDateString()
+      const todayInLocation = location?.timezone 
+        ? DateTime.now().setZone(location.timezone).toJSDate()
+        : new Date()
+      const isViewingToday = selectedDate.toDateString() === todayInLocation.toDateString()
 
       if (currentHour && isViewingToday) {
         // Para a data de hoje, usar a lógica de hora atual vs navegação manual
@@ -809,20 +812,59 @@ export default function HygromanteiApp() {
     }
   }
 
-  const resetToCurrentHour = () => {
-    // Sempre voltar para hoje e hora atual
-    setSelectedDate(new Date())
+  const resetToCurrentHour = useCallback(() => {
+    if (!location || !sunriseSunsetData) return
+    
+    // Obter a hora atual na localização
+    const nowInLocation = DateTime.now().setZone(location.timezone)
+    const currentTimeJS = nowInLocation.toJSDate()
+    
+    // Tentar encontrar a hora planetária atual em 3 dias possíveis: ontem, hoje e amanhã
+    const daysToCheck = [-1, 0, 1]
+    
+    for (const dayOffset of daysToCheck) {
+      const checkDate = nowInLocation.plus({ days: dayOffset }).toJSDate()
+      const hoursForDay = calculatePlanetaryHours(checkDate)
+      
+      // Verificar se a hora atual está neste dia
+      for (let i = 0; i < hoursForDay.length; i++) {
+        const hour = hoursForDay[i]
+        if (currentTimeJS >= hour.start && currentTimeJS < hour.end) {
+          // Encontramos! Definir a data e hora corretas
+          setSelectedDate(checkDate)
+          setAllPlanetaryHours(hoursForDay)
+          setCurrentHourInfo(hour)
+          setSelectedHourIndex(i)
+          setIsManuallyNavigating(false)
+          return
+        }
+      }
+    }
+    
+    // Fallback: se não encontrar (não deveria acontecer), usar a data atual
+    setSelectedDate(currentTimeJS)
     setIsManuallyNavigating(false)
     setSelectedHourIndex(null)
-  }
+  }, [location, sunriseSunsetData, calculatePlanetaryHours])
+
+  // Inicialização: encontrar a hora planetária correta quando o app carrega
+  useEffect(() => {
+    if (location && sunriseSunsetData && !hasInitialized.current) {
+      // Na primeira vez que temos dados, chamar resetToCurrentHour
+      hasInitialized.current = true
+      resetToCurrentHour()
+    }
+  }, [location, sunriseSunsetData, resetToCurrentHour])
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date)
       setIsDatePickerOpen(false)
       // Se não é hoje, permitir navegação livre, caso contrário, mostrar hora atual
-      const today = new Date()
-      const isToday = date.toDateString() === today.toDateString()
+      const todayInLocation = location?.timezone 
+        ? DateTime.now().setZone(location.timezone).toJSDate()
+        : new Date()
+      const isToday = date.toDateString() === todayInLocation.toDateString()
       
       if (isToday) {
         // Se voltou para hoje, voltar ao modo automático
@@ -872,7 +914,7 @@ export default function HygromanteiApp() {
     try {
       // Usar API do Nominatim (OpenStreetMap) para autocomplete
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=us,cn,jp,de,gb,in,fr,it,ca,ru,br,au,es,mx,il,kr`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
         {
           headers: {
             'User-Agent': 'Hygromanteia App'
@@ -1180,132 +1222,90 @@ export default function HygromanteiApp() {
                   <MapPinIcon className={`h-4 w-4 ${geolocationError ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`} />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-4" align="center">
-                <div className="space-y-4">
-                  {/* Seção de auto-detecção */}
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Detectar automaticamente:
-                    </label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={retryGeolocation}
-                        disabled={isDetectingLocation}
-                        className="flex-1"
-                        title="Detectar minha localização atual"
-                      >
-                        {isDetectingLocation ? "Detectando..." : "📍 Detectar localização"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={useDefaultPermanently}
-                        title="Usar São Paulo como padrão"
-                      >
-                        Usar SP
-                      </Button>
-                    </div>
-                  </div>
+              <PopoverContent className="p-3" align="center">
+                <div className="flex items-center gap-3">
+                  {/* Botão de detecção */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={retryGeolocation}
+                    disabled={isDetectingLocation}
+                    className="h-9 w-9 p-0"
+                    title="Detectar minha localização atual"
+                  >
+                    <MapPinIcon className={`h-5 w-5 ${isDetectingLocation ? 'animate-pulse' : ''}`} />
+                  </Button>
                   
-                  <div className="text-center text-sm text-gray-500">ou</div>
+                  <span className="text-sm text-gray-500">ou</span>
                   
-                  {/* Seção de busca manual com autocomplete */}
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Digite o nome da cidade:
-                      </label>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Use as setas ↑↓ para navegar e Enter para selecionar
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="Ex: Rio de Janeiro, London, Paris..."
-                        value={locationInput}
-                        onChange={(e) => handleLocationInputChange(e.target.value)}
-                        onKeyDown={handleLocationInputKeyDown}
-                        disabled={isSearchingLocation}
-                        className="w-full"
-                        autoComplete="off"
-                      />
-                      
-                      {/* Indicador de carregamento */}
-                      {isLoadingSuggestions && (
-                        <div className="absolute right-3 top-9 text-gray-400">
-                          <span className="text-sm">🔍</span>
-                        </div>
-                      )}
-                      
-                      {/* Lista de sugestões */}
-                      {showSuggestions && locationSuggestions.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                          {locationSuggestions.map((suggestion, index) => {
-                            // Usar a mesma lógica da função selectLocationSuggestion
-                            const city = suggestion.address.city || 
-                                        suggestion.address.town || 
-                                        suggestion.address.village || 
-                                        suggestion.address.municipality ||
-                                        suggestion.display_name.split(',')[0].trim()
-                            const state = suggestion.address.state || ''
-                            const country = suggestion.address.country || ''
-                            const displayText = `${city}${state ? `, ${state}` : ''}${country ? `, ${country}` : ''}`
-                            
-                            return (
-                              <button
-                                key={index}
-                                type="button"
-                                className={`w-full px-3 py-2 text-left focus:outline-none first:rounded-t-md last:rounded-b-md ${
-                                  index === selectedSuggestionIndex 
-                                    ? 'bg-blue-100 text-blue-900' 
-                                    : 'hover:bg-gray-100 focus:bg-gray-100'
-                                }`}
-                                onClick={() => selectLocationSuggestion(suggestion)}
-                                onMouseEnter={() => setSelectedSuggestionIndex(index)}
-                              >
-                                <div className={`text-sm font-medium ${
-                                  index === selectedSuggestionIndex ? 'text-blue-900' : 'text-gray-900'
-                                }`}>
-                                  {displayText}
-                                </div>
-                                <div className={`text-xs truncate ${
-                                  index === selectedSuggestionIndex ? 'text-blue-700' : 'text-gray-500'
-                                }`}>
-                                  {suggestion.display_name}
-                                </div>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                      
-                      {/* Mensagem quando não há sugestões */}
-                      {showSuggestions && locationSuggestions.length === 0 && !isLoadingSuggestions && locationInput.length >= 3 && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
-                          <p className="text-sm text-gray-500">Nenhuma cidade encontrada</p>
-                        </div>
-                      )}
-                    </div>
+                  {/* Input de localização */}
+                  <div className="relative flex-1">
+                    <Input
+                      type="text"
+                      placeholder="Digite uma cidade..."
+                      value={locationInput}
+                      onChange={(e) => handleLocationInputChange(e.target.value)}
+                      onKeyDown={handleLocationInputKeyDown}
+                      disabled={isSearchingLocation}
+                      className="w-full h-9 text-sm"
+                      autoComplete="off"
+                    />
                     
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setIsLocationPickerOpen(false)
-                          setLocationInput("")
-                          setLocationSuggestions([])
-                          setShowSuggestions(false)
-                        }}
-                        className="flex-1"
-                      >
-                        Fechar
-                      </Button>
-                    </div>
+                    {/* Indicador de carregamento */}
+                    {isLoadingSuggestions && (
+                      <div className="absolute right-2 top-2 text-gray-400">
+                        <span className="text-xs">🔍</span>
+                      </div>
+                    )}
+                    
+                    {/* Lista de sugestões */}
+                    {showSuggestions && locationSuggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {locationSuggestions.map((suggestion, index) => {
+                          const city = suggestion.address.city || 
+                                      suggestion.address.town || 
+                                      suggestion.address.village || 
+                                      suggestion.address.municipality ||
+                                      suggestion.display_name.split(',')[0].trim()
+                          const state = suggestion.address.state || ''
+                          const country = suggestion.address.country || ''
+                          const displayText = `${city}${state ? `, ${state}` : ''}${country ? `, ${country}` : ''}`
+                          
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              className={`w-full px-3 py-2 text-left focus:outline-none first:rounded-t-md last:rounded-b-md ${
+                                index === selectedSuggestionIndex 
+                                  ? 'bg-blue-100 text-blue-900' 
+                                  : 'hover:bg-gray-100 focus:bg-gray-100'
+                              }`}
+                              onClick={() => selectLocationSuggestion(suggestion)}
+                              onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                            >
+                              <div className={`text-sm font-medium ${
+                                index === selectedSuggestionIndex ? 'text-blue-900' : 'text-gray-900'
+                              }`}>
+                                {displayText}
+                              </div>
+                              <div className={`text-xs truncate ${
+                                index === selectedSuggestionIndex ? 'text-blue-700' : 'text-gray-500'
+                              }`}>
+                                {suggestion.display_name}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* Mensagem quando não há sugestões */}
+                    {showSuggestions && locationSuggestions.length === 0 && !isLoadingSuggestions && locationInput.length >= 3 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
+                        <p className="text-sm text-gray-500">Nenhuma cidade encontrada</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </PopoverContent>
