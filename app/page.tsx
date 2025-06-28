@@ -1089,12 +1089,12 @@ export default function HygromanteiApp() {
 
     return (
       <div className="mt-8 mx-auto">
-        <h3 className="text-xl font-medium text-gray-800 mb-4 text-center">Manuscript Recommendations</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 className="text-lg md:text-xl font-medium text-gray-800 mb-4 text-center">Manuscript Recommendations</h3>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {recommendations.map((rec, index) => (
             <div key={index} className="p-4">
-              <p className="text-base font-bold italic text-gray-700 mb-2">{rec.name}</p>
-              <p className="text-base text-gray-600 leading-relaxed">{rec.text}</p>
+              <p className="text-sm md:text-base font-bold italic text-gray-700 mb-2">{rec.name}</p>
+              <p className="text-sm md:text-base text-gray-600 leading-relaxed">{rec.text}</p>
             </div>
           ))}
         </div>
@@ -1135,9 +1135,9 @@ export default function HygromanteiApp() {
       </div>
 
       {/* Data no canto superior esquerdo */}
-      <div className="absolute top-4 left-4 text-left z-20">
-        <div className="flex items-center gap-2">
-          <p className="text-sm md:text-base text-gray-600 tracking-tight">{getFormattedDate()}</p>
+      <div className="absolute top-4 w-full px-4 text-center md:w-auto md:px-0 md:text-left md:left-4 z-20">
+        <div className="flex items-center justify-center md:justify-start gap-2">
+          <p className="text-xs md:text-base text-gray-600 tracking-tight">{getFormattedDate()}</p>
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -1193,7 +1193,7 @@ export default function HygromanteiApp() {
               </div>
               
               {/* Hour ordinal and range */}
-              <p className="text-lg md:text-xl text-gray-600 tracking-tight">
+              <p className="text-base md:text-xl text-gray-600 tracking-tight">
                 {formatOrdinal(currentHourInfo.hourNumber)} hour ({formatTime(currentHourInfo.start)} - {formatTime(currentHourInfo.end)})
               </p>
               
@@ -1218,7 +1218,7 @@ export default function HygromanteiApp() {
             </div>
           </div>
           
-          <h1 className="text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight tracking-tight mb-3">
+          <h1 className="text-xl md:text-3xl lg:text-4xl text-gray-900 leading-tight tracking-tight mb-3">
             {currentDay} {daySymbol}, Hour {getPlanetWithPreposition(currentHourInfo.planet)} {PLANET_SYMBOLS[currentHourInfo.planet]}
           </h1>
           <div className="flex items-center justify-center gap-1">
@@ -1322,7 +1322,7 @@ export default function HygromanteiApp() {
               </PopoverContent>
             </Popover>
             <div className="flex flex-col items-center gap-1">
-              <p className="text-base md:text-lg text-gray-600 tracking-tight">{getFormattedLocation()}</p>
+              <p className="text-sm md:text-lg text-gray-600 tracking-tight">{getFormattedLocation()}</p>
               {geolocationError && (
                 <p className="text-xs text-orange-600 max-w-md text-center">{geolocationError}</p>
               )}
