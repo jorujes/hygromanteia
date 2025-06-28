@@ -84,65 +84,65 @@ interface PlanetaryHourData {
   Gennadianus: string
 }
 
-const DAYS_PT = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"]
+const DAYS_PT = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 const DAYS_CLASSICAL = [
-  "Dia do Sol",
-  "Dia da Lua", 
-  "Dia de Marte",
-  "Dia de Mercúrio",
-  "Dia de Júpiter",
-  "Dia de Vênus",
-  "Dia de Saturno",
+  "Day of the Sun",
+  "Day of the Moon", 
+  "Day of Mars",
+  "Day of Mercury",
+  "Day of Jupiter",
+  "Day of Venus",
+  "Day of Saturn",
 ]
-// Ordem caldéica dos planetas
-const PLANETS = ["Sol", "Vênus", "Mercúrio", "Lua", "Saturno", "Júpiter", "Marte"]
+// Chaldean order of the planets
+const PLANETS = ["Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars"]
 
-// Símbolos astrológicos correspondentes
+// Corresponding astrological symbols
 const PLANET_SYMBOLS: Record<string, string> = {
-  Sol: "☉",
-  Lua: "☾",
-  Mercúrio: "☿",
-  Vênus: "♀",
-  Marte: "♂",
-  Júpiter: "♃",
-  Saturno: "♄",
+  Sun: "☉",
+  Moon: "☾",
+  Mercury: "☿",
+  Venus: "♀",
+  Mars: "♂",
+  Jupiter: "♃",
+  Saturn: "♄",
 }
 
-// Preposições corretas para cada planeta
+// Correct prepositions for each planet
 const PLANET_PREPOSITIONS: Record<string, string> = {
-  Sol: "do Sol",
-  Lua: "da Lua",
-  Mercúrio: "de Mercúrio",
-  Vênus: "de Vênus",
-  Marte: "de Marte",
-  Júpiter: "de Júpiter",
-  Saturno: "de Saturno",
+  Sun: "of the Sun",
+  Moon: "of the Moon",
+  Mercury: "of Mercury",
+  Venus: "of Venus",
+  Mars: "of Mars",
+  Jupiter: "of Jupiter",
+  Saturn: "of Saturn",
 }
 
-// Mapeamento correto: dia da semana -> índice do planeta regente no array PLANETS
+// Correct mapping: day of week -> ruling planet index in PLANETS array
 const DAY_TO_PLANET_INDEX = [
-  0, // Domingo = Sol (índice 0)
-  3, // Segunda = Lua (índice 3)
-  6, // Terça = Marte (índice 6)
-  2, // Quarta = Mercúrio (índice 2)
-  5, // Quinta = Júpiter (índice 5)
-  1, // Sexta = Vênus (índice 1)
-  4, // Sábado = Saturno (índice 4)
+  0, // Sunday = Sun (index 0)
+  3, // Monday = Moon (index 3)
+  6, // Tuesday = Mars (index 6)
+  2, // Wednesday = Mercury (index 2)
+  5, // Thursday = Jupiter (index 5)
+  1, // Friday = Venus (index 1)
+  4, // Saturday = Saturn (index 4)
 ]
 
 const MONTHS_PT = [
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ]
 
 export default function HygromanteiApp() {
@@ -176,7 +176,7 @@ export default function HygromanteiApp() {
   const hasInitialized = useRef(false)
   const [isManualLocation, setIsManualLocation] = useState(false)
 
-  // Carregar dados das horas planetárias
+  // Load planetary hours data
   useEffect(() => {
     const loadPlanetaryData = async () => {
       try {
@@ -184,14 +184,14 @@ export default function HygromanteiApp() {
         const data: PlanetaryHourData[] = await response.json()
         setPlanetaryHourData(data)
       } catch (error) {
-        console.error('Erro ao carregar dados das horas planetárias:', error)
+        console.error('Error loading planetary hours data:', error)
       }
     }
 
     loadPlanetaryData()
   }, [])
 
-  // Função para verificar estado da permissão de geolocalização
+  // Function to check geolocation permission status
   const checkGeolocationPermission = useCallback(async () => {
     if (!navigator.permissions) {
       return 'unknown'
@@ -201,14 +201,14 @@ export default function HygromanteiApp() {
       const result = await navigator.permissions.query({ name: 'geolocation' })
       return result.state // 'granted', 'denied', 'prompt'
     } catch (error) {
-      console.log("Erro ao verificar permissão de geolocalização:", error)
+      console.log("Error checking geolocation permission:", error)
       return 'unknown'
     }
   }, [])
 
-  // Função para usar localização padrão
+  // Function to use default location
   const useDefaultLocation = useCallback(() => {
-    // Se o usuário já escolheu manualmente uma localização, não fazer nada
+    // If user has already manually chosen a location, do nothing
     if (isManualLocation) {
       return
     }
@@ -220,56 +220,56 @@ export default function HygromanteiApp() {
       longitude: -46.6333,
       city: "São Paulo",
       state: "SP",
-      country: "Brasil",
+      country: "Brazil",
       timezone: newTimezone,
     }
 
-    // Apenas definir a localização - não forçar data
+    // Just set the location - don't force date
     setLocation(newLocation)
   }, [isManualLocation])
 
-  // Função para solicitar geolocalização de forma otimizada
+  // Function to request geolocation in an optimized way
   const requestGeolocation = useCallback(async () => {
     setIsDetectingLocation(true)
     
-    // Verificar se geolocalização está disponível
+    // Check if geolocation is available
     if (!navigator.geolocation) {
-      console.log("Geolocalização não suportada pelo navegador")
+      console.log("Geolocation not supported by browser")
       setIsGeolocationAvailable(false)
-      setGeolocationError("Geolocalização não suportada por este navegador.")
+      setGeolocationError("Geolocation not supported by this browser.")
       setIsDetectingLocation(false)
       useDefaultLocation()
       return
     }
 
-    // Verificar estado da permissão primeiro
+    // Check permission status first
     const permissionState = await checkGeolocationPermission()
-    console.log("Estado da permissão de geolocalização:", permissionState)
+    console.log("Geolocation permission status:", permissionState)
 
          if (permissionState === 'denied') {
-       setGeolocationError("Permissão de geolocalização negada. Use o ícone de localização para inserir sua cidade manualmente.")
+       setGeolocationError("Geolocation permission denied. Use the location icon to manually enter your city.")
        setIsDetectingLocation(false)
        useDefaultLocation()
        return
      }
 
-    // Configurações otimizadas para diferentes cenários
+    // Optimized settings for different scenarios
     const options = {
-      enableHighAccuracy: true, // Tentar obter localização mais precisa primeiro
-      timeout: 8000, // Timeout mais conservador (8 segundos)
-      maximumAge: 300000, // Cache por 5 minutos
+      enableHighAccuracy: true, // Try to get more precise location first
+      timeout: 8000, // More conservative timeout (8 seconds)
+      maximumAge: 300000, // Cache for 5 minutes
     }
 
     const successCallback = async (position: GeolocationPosition) => {
       const lat = position.coords.latitude
       const lng = position.coords.longitude
 
-      console.log("Geolocalização obtida com sucesso:", { lat, lng, accuracy: position.coords.accuracy })
+      console.log("Geolocation obtained successfully:", { lat, lng, accuracy: position.coords.accuracy })
 
       try {
-        // Usar API de geocoding reverso para obter cidade
+        // Use reverse geocoding API to get city
         const response = await fetch(
-          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`,
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
         )
 
         if (!response.ok) {
@@ -283,58 +283,58 @@ export default function HygromanteiApp() {
         const newLocation: Location = {
           latitude: lat,
           longitude: lng,
-          city: data.city || data.locality || "Cidade detectada",
+          city: data.city || data.locality || "Location detected",
           state: data.principalSubdivision || "",
           country: data.countryName || "",
           timezone: newTimezone,
         }
 
-        // Apenas definir a localização - não forçar data
+        // Just set the location - don't force date
         setLocation(newLocation)
-        setGeolocationError(null) // Limpar qualquer erro anterior
+        setGeolocationError(null) // Clear any previous error
         setIsDetectingLocation(false)
       } catch (error) {
-        console.log("Erro ao obter nome da cidade, usando coordenadas:", error)
+        console.log("Error getting city name, using coordinates:", error)
         
-        // Apenas definir a localização - não forçar data
+        // Just set the location - don't force date
         const fallbackTimezone = "America/Sao_Paulo"
         
         setLocation({
           latitude: lat,
           longitude: lng,
-          city: "Localização detectada",
+          city: "Location detected",
           state: "",
-          country: "Brasil",
+          country: "Brazil",
           timezone: fallbackTimezone,
         })
-        setGeolocationError("Localização detectada, mas não foi possível obter o nome da cidade.")
+        setGeolocationError("Location detected, but could not get city name.")
         setIsDetectingLocation(false)
       }
     }
 
     const errorCallback = (error: GeolocationPositionError) => {
-      console.log("Erro na geolocalização:", error.message, "Código:", error.code)
+      console.log("Geolocation error:", error.message, "Code:", error.code)
       
       let errorMessage = ""
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          errorMessage = "Permissão de geolocalização negada. Use o ícone de localização para inserir sua cidade."
+          errorMessage = "Geolocation permission denied. Use the location icon to enter your city."
           break
         case error.POSITION_UNAVAILABLE:
-          // Não mostrar erro para posição não disponível, usar silenciosamente o padrão
+          // Don't show error for position unavailable, silently use default
           errorMessage = ""
           break
         case error.TIMEOUT:
-          // Não mostrar erro para timeout, usar silenciosamente o padrão
+          // Don't show error for timeout, silently use default
           errorMessage = ""
           break
         default:
-          // Não mostrar erro para outros casos, usar silenciosamente o padrão
+          // Don't show error for other cases, silently use default
           errorMessage = ""
           break
       }
       
-      // Só definir erro se houver mensagem (apenas para permissão negada)
+      // Only set error if there's a message (only for permission denied)
       if (errorMessage) {
         setGeolocationError(errorMessage)
       } else {
@@ -345,14 +345,14 @@ export default function HygromanteiApp() {
     }
 
     try {
-      // Tentar obter localização com alta precisão primeiro
+      // Try to get location with high accuracy first
       navigator.geolocation.getCurrentPosition(successCallback, (error) => {
-        // Se falhar com alta precisão, tentar com baixa precisão
+        // If it fails with high accuracy, try with low accuracy
         if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
-          console.log("Tentando com baixa precisão...")
+          console.log("Trying with low accuracy...")
           const fallbackOptions = {
             enableHighAccuracy: false,
-            timeout: 6000, // Timeout mais curto para fallback
+            timeout: 6000, // Shorter timeout for fallback
             maximumAge: 300000,
           }
           
@@ -362,29 +362,29 @@ export default function HygromanteiApp() {
         }
       }, options)
          } catch (error) {
-       console.log("Erro geral na detecção de localização:", error)
-       setGeolocationError("Erro ao acessar a geolocalização.")
+       console.log("General error in location detection:", error)
+       setGeolocationError("Error accessing geolocation.")
        setIsDetectingLocation(false)
        useDefaultLocation()
      }
   }, [useDefaultLocation, checkGeolocationPermission])
 
-  // Detectar localização e cidade - agora com delay para melhor UX
+  // Detect location and city - now with delay for better UX
   useEffect(() => {
-    // Se o usuário já escolheu manualmente uma localização, não fazer nada
+    // If user has already manually chosen a location, do nothing
     if (isManualLocation) {
       return
     }
 
     const detectLocationWithDelay = async () => {
-      // Aguardar um pouco para a página carregar completamente
+      // Wait a bit for the page to fully load
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // Verificar se é o primeiro carregamento
+      // Check if it's the first load
       const hasLocationStored = localStorage.getItem('hygromanteia-location-preference')
       
       if (hasLocationStored === 'manual') {
-        // Se o usuário escolheu manualmente uma localização, usar ela
+        // If user manually chose a location, use it
         const savedLocation = localStorage.getItem('hygromanteia-manual-location')
         if (savedLocation) {
           try {
@@ -392,39 +392,39 @@ export default function HygromanteiApp() {
             setLocation(parsedLocation)
             setIsManualLocation(true)
           } catch (error) {
-            console.error('Erro ao carregar localização salva:', error)
+            console.error('Error loading saved location:', error)
           }
         }
         return
       }
       
       if (hasLocationStored === 'default') {
-        // Se o usuário já escolheu usar localização padrão, não perguntar novamente
+        // If user already chose to use default location, don't ask again
         useDefaultLocation()
         return
       }
 
       if (hasLocationStored === 'auto') {
-        // Se o usuário já permitiu auto-detecção, tentar novamente
+        // If user already allowed auto-detection, try again
         await requestGeolocation()
         return
       }
 
-      // Primeira vez: tentar detectar automaticamente
+      // First time: try to detect automatically
       await requestGeolocation()
     }
 
     detectLocationWithDelay()
-  }, []) // Removendo as dependências problemáticas
+  }, []) // Removing problematic dependencies
 
-  // Função para buscar localização por nome
+  // Function to search location by name
   const searchLocationByName = useCallback(async (locationName: string) => {
     if (!locationName.trim()) return
 
     setIsSearchingLocation(true)
     
     try {
-      // Usar a API OpenStreetMap Nominatim que é mais confiável
+      // Use OpenStreetMap Nominatim API which is more reliable
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}&limit=1&addressdetails=1`
       )
@@ -444,58 +444,58 @@ export default function HygromanteiApp() {
           longitude: parseFloat(result.lon),
           city: displayParts[0] || locationName,
           state: result.address?.state || displayParts[1] || "",
-          country: result.address?.country || "Brasil",
+          country: result.address?.country || "Brazil",
           timezone: tzLookup(parseFloat(result.lat), parseFloat(result.lon)),
         })
         setIsLocationPickerOpen(false)
         setLocationInput("")
       } else {
-        alert("Localização não encontrada. Tente novamente com outro nome ou seja mais específico (ex: 'Rio de Janeiro, Brasil').")
+        alert("Location not found. Try again with another name or be more specific (e.g. 'New York, USA').")
       }
     } catch (error) {
-      console.error("Erro ao buscar localização:", error)
-      alert("Erro ao buscar localização. Verifique sua conexão e tente novamente.")
+      console.error("Error searching location:", error)
+      alert("Error searching location. Check your connection and try again.")
     } finally {
       setIsSearchingLocation(false)
     }
   }, [])
 
-  // Calcular horários aproximados de nascer e pôr do sol baseados na latitude
+  // Calculate approximate sunrise and sunset times based on latitude
   const calculateApproximateSunriseSunset = (latitude: number): { sunrise: Date; sunset: Date } => {
     const today = new Date()
     const month = today.getMonth()
 
-    // Ajustes sazonais aproximados (minutos antes/depois de 6h/18h)
+    // Approximate seasonal adjustments (minutes before/after 6am/6pm)
     const seasonalAdjustment = [
-      { sr: -60, ss: 60 }, // Janeiro
-      { sr: -40, ss: 40 }, // Fevereiro
-      { sr: -20, ss: 20 }, // Março
-      { sr: 0, ss: 0 }, // Abril
-      { sr: 20, ss: -20 }, // Maio
-      { sr: 30, ss: -30 }, // Junho
-      { sr: 20, ss: -20 }, // Julho
-      { sr: 0, ss: 0 }, // Agosto
-      { sr: -20, ss: 20 }, // Setembro
-      { sr: -40, ss: 40 }, // Outubro
-      { sr: -60, ss: 60 }, // Novembro
-      { sr: -70, ss: 70 }, // Dezembro
+      { sr: -60, ss: 60 }, // January
+      { sr: -40, ss: 40 }, // February
+      { sr: -20, ss: 20 }, // March
+      { sr: 0, ss: 0 }, // April
+      { sr: 20, ss: -20 }, // May
+      { sr: 30, ss: -30 }, // June
+      { sr: 20, ss: -20 }, // July
+      { sr: 0, ss: 0 }, // August
+      { sr: -20, ss: 20 }, // September
+      { sr: -40, ss: 40 }, // October
+      { sr: -60, ss: 60 }, // November
+      { sr: -70, ss: 70 }, // December
     ]
 
-    // Ajuste baseado na latitude (quanto mais longe do equador, maior a variação sazonal)
-    const latitudeAdjustment = (Math.abs(latitude) / 90) * 60 // até 60 minutos de ajuste no extremo
+    // Adjustment based on latitude (the farther from the equator, the greater the seasonal variation)
+    const latitudeAdjustment = (Math.abs(latitude) / 90) * 60 // up to 60 minutes adjustment at the extreme
 
-    // Calcular horários base (6h e 18h)
+    // Calculate base times (6am and 6pm)
     const sunrise = new Date(today)
     sunrise.setHours(6, 0, 0, 0)
 
     const sunset = new Date(today)
     sunset.setHours(18, 0, 0, 0)
 
-    // Aplicar ajustes
+    // Apply adjustments
     const srAdjustment = seasonalAdjustment[month].sr * (latitudeAdjustment / 60)
     const ssAdjustment = seasonalAdjustment[month].ss * (latitudeAdjustment / 60)
 
-    // No hemisfério sul, inverter os ajustes sazonais
+    // In the southern hemisphere, invert seasonal adjustments
     const finalSrAdjustment = latitude < 0 ? -srAdjustment : srAdjustment
     const finalSsAdjustment = latitude < 0 ? -ssAdjustment : ssAdjustment
 
@@ -505,7 +505,7 @@ export default function HygromanteiApp() {
     return { sunrise, sunset }
   }
 
-  // Obter horários de nascer e pôr do sol com correção de fuso horário
+  // Get sunrise and sunset times with timezone correction
   useEffect(() => {
     const fetchSunriseSunset = async () => {
       if (!location) return
@@ -515,10 +515,10 @@ export default function HygromanteiApp() {
         const formattedDate = today.toFormat("yyyy-MM-dd")
 
         console.log(
-          `Buscando dados de nascer/pôr do sol para: ${location.latitude}, ${location.longitude}, data: ${formattedDate} no fuso ${location.timezone}`
+          `Fetching sunrise/sunset data for: ${location.latitude}, ${location.longitude}, date: ${formattedDate} in timezone ${location.timezone}`
         )
 
-        // Buscar dados de nascer/pôr do sol
+        // Fetch sunrise/sunset data
         const response = await fetch(
           `https://api.sunrise-sunset.org/json?lat=${location.latitude}&lng=${location.longitude}&date=${formattedDate}&formatted=0`
         )
@@ -528,7 +528,7 @@ export default function HygromanteiApp() {
         }
 
         const data = await response.json()
-        console.log("Resposta da API sunrise-sunset:", data)
+        console.log("Sunrise-sunset API response:", data)
 
         if (data.results && data.status === "OK") {
           // As strings da API são sempre em UTC. O Luxon fará a mágica.
@@ -539,31 +539,31 @@ export default function HygromanteiApp() {
             zone: "utc",
           })
 
-          // Converter para o fuso horário correto da localização
+          // Convert to the correct location timezone
           const sunriseLocal = sunriseUTC.setZone(location.timezone)
           const sunsetLocal = sunsetUTC.setZone(location.timezone)
 
           console.log(
-            "Nascer do sol (horário local da região):",
+            "Sunrise (local time):",
             sunriseLocal.toFormat("HH:mm:ss")
           )
           console.log(
-            "Pôr do sol (horário local da região):",
+            "Sunset (local time):",
             sunsetLocal.toFormat("HH:mm:ss")
           )
 
           setSunriseSunsetData({ sunrise: sunriseLocal, sunset: sunsetLocal })
           setApiError(null)
         } else {
-          throw new Error("API retornou dados inválidos ou erro de status.")
+          throw new Error("API returned invalid data or error status.")
         }
       } catch (error) {
-        console.log("Erro ao obter horários de nascer/pôr do sol:", error)
+        console.log("Error getting sunrise/sunset times:", error)
         setApiError(`${error}`)
 
-        // O fallback para cálculo aproximado pode ser mantido se desejado,
-        // mas a API é geralmente confiável. Por enquanto, apenas logamos o erro.
-        setSunriseSunsetData(null) // Limpar dados antigos
+        // The fallback to approximate calculation can be maintained if desired,
+        // but the API is generally reliable. For now, we just log the error.
+        setSunriseSunsetData(null) // Clear old data
       }
     }
 
@@ -572,7 +572,7 @@ export default function HygromanteiApp() {
     }
   }, [location])
 
-  // Atualizar tempo atual
+  // Update current time
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
@@ -580,7 +580,7 @@ export default function HygromanteiApp() {
     return () => clearInterval(timer)
   }, [])
 
-  // Calcular horas planetárias baseadas no horário real do nascer/pôr do sol
+  // Calculate planetary hours based on actual sunrise/sunset times
   const calculatePlanetaryHours = useCallback((date: Date): PlanetaryHourInfo[] => {
     if (!sunriseSunsetData || !location) return []
 
@@ -589,7 +589,7 @@ export default function HygromanteiApp() {
       zone: location.timezone,
     })
 
-    // Assegurar que as datas de nascer e por do sol correspondem ao dia selecionado
+    // Ensure sunrise and sunset dates match the selected day
     const todaySunrise = sunrise.set({
       year: dateToCalculate.year,
       month: dateToCalculate.month,
@@ -608,12 +608,12 @@ export default function HygromanteiApp() {
     const nightHourDuration = nightDuration.as("milliseconds") / 12
 
     const hours: PlanetaryHourInfo[] = []
-    const dayOfWeek = dateToCalculate.weekday % 7 // Luxon weekday: 1=Seg, 7=Dom. Ajuste para 0=Dom.
+    const dayOfWeek = dateToCalculate.weekday % 7 // Luxon weekday: 1=Mon, 7=Sun. Adjust to 0=Sun.
 
-    // Obter o índice do planeta regente do dia
+    // Get the ruling planet index for the day
     const firstPlanetIndex = DAY_TO_PLANET_INDEX[dayOfWeek]
 
-    // Horas do dia (1-12)
+    // Day hours (1-12)
     for (let i = 0; i < 12; i++) {
       const start = todaySunrise.plus({ milliseconds: i * dayHourDuration })
       const end = todaySunrise.plus({
@@ -628,14 +628,14 @@ export default function HygromanteiApp() {
         hourNumber: i + 1,
         city: location.city || "",
         state: location.state || "",
-        country: location.country || "Brasil",
+        country: location.country || "Brazil",
         latitude: location.latitude,
         longitude: location.longitude,
         timezone: location.timezone,
       })
     }
 
-    // Horas da noite (13-24)
+    // Night hours (13-24)
     for (let i = 0; i < 12; i++) {
       const start = todaySunset.plus({ milliseconds: i * nightHourDuration })
       const end = todaySunset.plus({
@@ -650,7 +650,7 @@ export default function HygromanteiApp() {
         hourNumber: i + 13,
         city: location.city || "",
         state: location.state || "",
-        country: location.country || "Brasil",
+        country: location.country || "Brazil",
         latitude: location.latitude,
         longitude: location.longitude,
         timezone: location.timezone,
@@ -739,34 +739,34 @@ export default function HygromanteiApp() {
   }
 
   const getFormattedDate = (): string => {
-    if (!location?.timezone) return "Calculando data..."
+    if (!location?.timezone) return "Calculating date..."
 
-    // Use Luxon para formatar a data no fuso horário correto da localização
+    // Use Luxon to format the date in the correct location timezone
     const dateInLocation = DateTime.fromJSDate(selectedDate).setZone(location.timezone)
 
-    // Luxon weekday: 1=Mon, 7=Sun. Nosso array é 0=Dom.
+    // Luxon weekday: 1=Mon, 7=Sun. Our array is 0=Sun.
     const dayOfWeekIndex = dateInLocation.weekday % 7 
     const dayOfWeek = DAYS_PT[dayOfWeekIndex]
     const day = dateInLocation.day
-    const month = MONTHS_PT[dateInLocation.month - 1] // Mês no Luxon é 1-based
+    const month = MONTHS_PT[dateInLocation.month - 1] // Month in Luxon is 1-based
     const year = dateInLocation.year
 
-    return `${dayOfWeek}, ${day} de ${month} de ${year}`
+    return `${dayOfWeek}, ${month} ${day}, ${year}`
   }
 
   const getFormattedLocation = (): string => {
-    if (!location) return "Localização não detectada"
+    if (!location) return "Location not detected"
 
-    const city = location.city || "Cidade não identificada"
+    const city = location.city || "Unidentified city"
     const state = location.state || ""
-    const country = location.country || "Brasil"
+    const country = location.country || "Brazil"
 
-    // Se temos estado, mostrar no formato "Cidade - Estado"
+    // If we have state, show in "City - State" format
     if (state) {
       return `${city} - ${state} - ${country}`
     }
 
-    // Se não temos estado, mostrar apenas a cidade
+    // If no state, show only city
     return city
   }
 
@@ -777,15 +777,18 @@ export default function HygromanteiApp() {
       .toFormat("HH:mm")
   }
 
-  // Ex.: 1ª, 2ª, 10ª hora (forma feminina porque "hora")
-  const formatOrdinal = (n: number): string => `${n}ª`
-
-  // Função para obter preposição correta do planeta
-  const getPlanetWithPreposition = (planet: string): string => {
-    return PLANET_PREPOSITIONS[planet] || `de ${planet}`
+  // E.g.: 1st, 2nd, 10th hour
+  const formatOrdinal = (n: number): string => {
+    const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'
+    return `${n}${suffix}`
   }
 
-  // Função para buscar recomendações da hora atual
+  // Function to get correct preposition for planet
+  const getPlanetWithPreposition = (planet: string): string => {
+    return PLANET_PREPOSITIONS[planet] || `of ${planet}`
+  }
+
+  // Function to fetch current hour recommendations
   const getHourRecommendations = (dayName: string, hourNumber: number): PlanetaryHourData | null => {
     if (planetaryHourData.length === 0) return null
     
@@ -796,7 +799,7 @@ export default function HygromanteiApp() {
     ) || null
   }
 
-  // Funções para navegar entre as horas
+  // Functions to navigate between hours
   const goToPreviousHour = () => {
     if (selectedHourIndex !== null && selectedHourIndex > 0) {
       setIsManuallyNavigating(true)
@@ -1075,7 +1078,7 @@ export default function HygromanteiApp() {
     return Math.max(0, Math.min(100, progress))
   }
 
-  // Renderizar recomendações dos manuscritos
+  // Render manuscripts recommendations
   const renderRecommendations = () => {
     if (!currentHourRecommendations) return null
 
@@ -1089,7 +1092,7 @@ export default function HygromanteiApp() {
 
     return (
       <div className="mt-12 max-w-5xl mx-auto">
-        <h3 className="text-xl font-medium text-gray-800 mb-6 text-center">Recomendações dos Manuscritos</h3>
+        <h3 className="text-xl font-medium text-gray-800 mb-6 text-center">Manuscript Recommendations</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {recommendations.map((rec, index) => (
             <div key={index} className="bg-gray-50 rounded-lg p-4">
@@ -1106,11 +1109,11 @@ export default function HygromanteiApp() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-2xl text-gray-800 font-normal">Calculando...</p>
+          <p className="text-2xl text-gray-800 font-normal">Calculating...</p>
           {geolocationError && <p className="text-sm text-gray-500 mt-2">{geolocationError}</p>}
-          {apiError && <p className="text-sm text-gray-500 mt-2">Usando horários aproximados</p>}
+          {apiError && <p className="text-sm text-gray-500 mt-2">Using approximate times</p>}
           {!isGeolocationAvailable && (
-            <p className="text-sm text-gray-500 mt-2">Geolocalização não suportada. Usando localização padrão.</p>
+            <p className="text-sm text-gray-500 mt-2">Geolocation not supported. Using default location.</p>
           )}
         </div>
       </div>
@@ -1129,14 +1132,14 @@ export default function HygromanteiApp() {
           <p className="text-sm md:text-base text-gray-600 tracking-tight">{getFormattedDate()}</p>
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-1 hover:bg-gray-100"
-                title="Selecionar data"
-              >
-                <CalendarIcon className="h-4 w-4 text-gray-400" />
-              </Button>
+                              <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-1 hover:bg-gray-100"
+                  title="Select date"
+                >
+                  <CalendarIcon className="h-4 w-4 text-gray-400" />
+                </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
@@ -1163,7 +1166,7 @@ export default function HygromanteiApp() {
                   variant="ghost"
                   size="sm"
                   className="h-6 w-6 p-0 hover:bg-gray-100"
-                  title="Hora anterior"
+                  title="Previous hour"
                 >
                   <span className="text-gray-400 hover:text-gray-600">←</span>
                 </Button>
@@ -1173,30 +1176,30 @@ export default function HygromanteiApp() {
                   variant="ghost"
                   size="sm"
                   className="h-6 w-6 p-0 hover:bg-gray-100"
-                  title="Próxima hora"
+                  title="Next hour"
                 >
                   <span className="text-gray-400 hover:text-gray-600">→</span>
                 </Button>
               </div>
               
-              {/* Ordinal e range da hora */}
+              {/* Hour ordinal and range */}
               <p className="text-lg md:text-xl text-gray-600 tracking-tight">
-                {formatOrdinal(currentHourInfo.hourNumber)} hora ({formatTime(currentHourInfo.start)} - {formatTime(currentHourInfo.end)})
+                {formatOrdinal(currentHourInfo.hourNumber)} hour ({formatTime(currentHourInfo.start)} - {formatTime(currentHourInfo.end)})
               </p>
               
-              {/* Botão para voltar ao agora */}
+              {/* Return to now button */}
               <Button
                 onClick={resetToCurrentHour}
                 variant="link"
                 size="sm"
                 className="text-sm text-gray-500 hover:text-gray-700 h-auto p-0"
-                title="Voltar ao agora"
+                title="Return to now"
               >
                 ↺
               </Button>
             </div>
             
-            {/* Barra de progresso da hora atual */}
+            {/* Current hour progress bar */}
             <div className="w-64 h-1 bg-gray-200 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gray-800 transition-all duration-1000 ease-linear"
@@ -1206,7 +1209,7 @@ export default function HygromanteiApp() {
           </div>
           
           <h1 className="text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight tracking-tight mb-3">
-            {currentDay} {daySymbol}, Hora {getPlanetWithPreposition(currentHourInfo.planet)} {PLANET_SYMBOLS[currentHourInfo.planet]}
+            {currentDay} {daySymbol}, Hour {getPlanetWithPreposition(currentHourInfo.planet)} {PLANET_SYMBOLS[currentHourInfo.planet]}
           </h1>
           <div className="flex items-center justify-center gap-1">
             <Popover open={isLocationPickerOpen} onOpenChange={setIsLocationPickerOpen}>
@@ -1215,14 +1218,14 @@ export default function HygromanteiApp() {
                   variant="ghost"
                   size="sm"
                   className={`h-auto p-0.5 hover:bg-gray-100 self-start ${geolocationError ? 'text-orange-500' : ''}`}
-                  title={geolocationError ? `Erro de localização: ${geolocationError}` : "Alterar localização"}
+                  title={geolocationError ? `Location error: ${geolocationError}` : "Change location"}
                 >
                   <MapPinIcon className={`h-4 w-4 ${geolocationError ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`} />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="p-3" align="center">
                 <div className="flex items-center gap-3">
-                  {/* Botão de detecção */}
+                  {/* Detection button */}
                   <Button
                     type="button"
                     variant="ghost"
@@ -1230,18 +1233,18 @@ export default function HygromanteiApp() {
                     onClick={retryGeolocation}
                     disabled={isDetectingLocation}
                     className="h-9 w-9 p-0"
-                    title="Detectar minha localização atual"
+                    title="Detect my current location"
                   >
                     <MapPinIcon className={`h-5 w-5 ${isDetectingLocation ? 'animate-pulse' : ''}`} />
                   </Button>
                   
-                  <span className="text-sm text-gray-500">ou</span>
+                  <span className="text-sm text-gray-500">or</span>
                   
-                  {/* Input de localização */}
+                  {/* Location input */}
                   <div className="relative flex-1">
                     <Input
                       type="text"
-                      placeholder="Digite uma cidade..."
+                      placeholder="Enter a city..."
                       value={locationInput}
                       onChange={(e) => handleLocationInputChange(e.target.value)}
                       onKeyDown={handleLocationInputKeyDown}
@@ -1298,10 +1301,10 @@ export default function HygromanteiApp() {
                       </div>
                     )}
                     
-                    {/* Mensagem quando não há sugestões */}
+                    {/* Message when no suggestions */}
                     {showSuggestions && locationSuggestions.length === 0 && !isLoadingSuggestions && locationInput.length >= 3 && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
-                        <p className="text-sm text-gray-500">Nenhuma cidade encontrada</p>
+                        <p className="text-sm text-gray-500">No city found</p>
                       </div>
                     )}
                   </div>
@@ -1316,8 +1319,8 @@ export default function HygromanteiApp() {
             </div>
           </div>
           
-          {/* Recomendações dos manuscritos */}
-          {renderRecommendations()}
+                      {/* Manuscript recommendations */}
+            {renderRecommendations()}
         </div>
       </div>
     </div>

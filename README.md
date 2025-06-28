@@ -1,164 +1,164 @@
-# 🌟 Hygromanteia - Horas Planetárias
+# 🌟 Hygromanteia - Planetary Hours
 
-Uma aplicação web moderna para calcular e exibir as horas planetárias baseadas na sua localização, com integração de manuscritos históricos medievais.
+A modern web application to calculate and display planetary hours based on your location, with integration of medieval historical manuscripts.
 
-## ✨ Funcionalidades
+## ✨ Features
 
-### 🕒 Horas Planetárias Precisas
-- **Cálculos Astronômicos**: Baseados nos horários reais de nascer e pôr do sol
-- **Precisão Geográfica**: Usa sua localização atual ou permite inserir qualquer cidade
-- **Ordem Caldéica**: Seguindo a tradição astrológica clássica
-- **Atualização em Tempo Real**: Timer que atualiza automaticamente
+### 🕒 Precise Planetary Hours
+- **Astronomical Calculations**: Based on actual sunrise and sunset times
+- **Geographic Precision**: Uses your current location or allows entering any city
+- **Chaldean Order**: Following classical astrological tradition
+- **Real-time Updates**: Timer that updates automatically
 
-### 🌍 Localização Inteligente
-- **Detecção Automática**: GPS do navegador para localização precisa
-- **Busca Manual**: Insira qualquer cidade do mundo
-- **Geocoding Avançado**: Integração com APIs de geolocalização
-- **Fallback Inteligente**: Cálculos aproximados se APIs falharem
+### 🌍 Smart Location
+- **Automatic Detection**: Browser GPS for precise location
+- **Manual Search**: Enter any city in the world
+- **Advanced Geocoding**: Integration with geolocation APIs
+- **Smart Fallback**: Approximate calculations if APIs fail
 
-### 🗓️ Navegação Temporal
-- **Seletor de Data**: Explore horas planetárias de qualquer data
-- **Navegação por Horas**: Botões para navegar entre as 24 horas
-- **Progresso Visual**: Barra de progresso da hora atual
-- **Controle de Tempo**: Volte ao "agora" com um clique
+### 🗓️ Temporal Navigation
+- **Date Selector**: Explore planetary hours for any date
+- **Hour Navigation**: Buttons to navigate between the 24 hours
+- **Visual Progress**: Current hour progress bar
+- **Time Control**: Return to "now" with one click
 
-### 📜 Manuscritos Históricos
-- **Três Manuscritos Medievais**:
+### 📜 Historical Manuscripts
+- **Three Medieval Manuscripts**:
   - Harleianus
   - Monacensis  
   - Gennadianus
-- **Recomendações Contextuais**: Baseadas no dia e hora atual
-- **Filtragem Inteligente**: Remove entradas vazias automaticamente
+- **Contextual Recommendations**: Based on current day and hour
+- **Smart Filtering**: Automatically removes empty entries
 
-## 🛠️ Stack Tecnológica
+## 🛠️ Tech Stack
 
 ### Frontend
-- **Next.js 15.2.4** - Framework React com App Router
-- **React 19.1.0** - Biblioteca principal
-- **TypeScript** - Tipagem estática
-- **Tailwind CSS** - Estilização utilitária
-- **shadcn/ui** - Componentes baseados em Radix UI
+- **Next.js 15.2.4** - React Framework with App Router
+- **React 19.1.0** - Main library
+- **TypeScript** - Static typing
+- **Tailwind CSS** - Utility styling
+- **shadcn/ui** - Components based on Radix UI
 
-### APIs Integradas
+### Integrated APIs
 - **OpenStreetMap Nominatim** - Geocoding
-- **BigDataCloud** - Geolocalização reversa
-- **Sunrise-sunset.org** - Horários astronômicos precisos
-- **Navigator.geolocation** - GPS do navegador
+- **BigDataCloud** - Reverse geolocation
+- **Sunrise-sunset.org** - Precise astronomical times
+- **Navigator.geolocation** - Browser GPS
 
 ## 🚀 Deploy
 
 ### Railway
-Este projeto está otimizado para deploy no Railway:
+This project is optimized for Railway deployment:
 
-1. **Conecte o repositório** ao Railway
-2. **Configure as variáveis** (não necessárias para este projeto)
-3. **Deploy automático** será executado
+1. **Connect the repository** to Railway
+2. **Configure variables** (not needed for this project)
+3. **Automatic deploy** will run
 
 ### Vercel
-Também compatível com Vercel:
+Also compatible with Vercel:
 
 ```bash
 npm install -g vercel
 vercel --prod
 ```
 
-## 💻 Desenvolvimento Local
+## 💻 Local Development
 
-### Pré-requisitos
+### Prerequisites
 - Node.js 18+ 
-- pnpm (recomendado) ou npm
+- pnpm (recommended) or npm
 
-### Instalação
+### Installation
 ```bash
-# Clone o repositório
+# Clone the repository
 git clone https://github.com/jorujes/hygromanteia.git
 cd hygromanteia
 
-# Instale as dependências
+# Install dependencies
 pnpm install
 
-# Execute o servidor de desenvolvimento
+# Run development server
 pnpm dev
 ```
 
-Acesse `http://localhost:3000` no seu navegador.
+Access `http://localhost:3000` in your browser.
 
-## 🎨 Características Visuais
+## 🎨 Visual Features
 
-### Design Responsivo
-- **Mobile-first**: Funciona perfeitamente em dispositivos móveis
-- **Breakpoints**: Adaptação automática para tablet e desktop
-- **Tipografia Escalável**: Tamanhos que se ajustam ao dispositivo
+### Responsive Design
+- **Mobile-first**: Works perfectly on mobile devices
+- **Breakpoints**: Automatic adaptation for tablet and desktop
+- **Scalable Typography**: Sizes that adjust to the device
 
-### Interface Intuitiva
-- **Símbolos Astrológicos**: Unicode para todos os planetas
-- **Cores Harmoniosas**: Paleta neutra e elegante
-- **Animações Suaves**: Transições CSS para melhor UX
-- **Feedback Visual**: Estados hover e loading
+### Intuitive Interface
+- **Astrological Symbols**: Unicode for all planets
+- **Harmonious Colors**: Neutral and elegant palette
+- **Smooth Animations**: CSS transitions for better UX
+- **Visual Feedback**: Hover and loading states
 
-## 🔧 Configuração
+## 🔧 Configuration
 
-### Estrutura de Dados
-Os manuscritos históricos estão em `public/data/planetary_hours.json`:
+### Data Structure
+Historical manuscripts are in `public/data/planetary_hours.json`:
 
 ```json
 {
-  "Dia": "Domingo",
+  "Dia": "Sunday",
   "Hora": "1ª",
   "Planeta": "Sol",
-  "Harleianus": "Recomendação do manuscrito...",
-  "Monacensis": "Recomendação do manuscrito...",
-  "Gennadianus": "Recomendação do manuscrito..."
+  "Harleianus": "Manuscript recommendation...",
+  "Monacensis": "Manuscript recommendation...",
+  "Gennadianus": "Manuscript recommendation..."
 }
 ```
 
-### Personalização
-- **Cores**: Modifique `tailwind.config.ts`
-- **Componentes**: Customize em `components/ui/`
-- **Cálculos**: Ajuste em `app/page.tsx`
+### Customization
+- **Colors**: Modify `tailwind.config.ts`
+- **Components**: Customize in `components/ui/`
+- **Calculations**: Adjust in `app/page.tsx`
 
-## 📚 Documentação Técnica
+## 📚 Technical Documentation
 
-### Principais Componentes
-- **HygromanteiApp**: Componente principal
-- **calculatePlanetaryHours**: Cálculos das horas planetárias
-- **searchLocationByName**: Geocoding de cidades
-- **getPlanetaryHourRecommendations**: Busca nos manuscritos
+### Main Components
+- **HygromanteiApp**: Main component
+- **calculatePlanetaryHours**: Planetary hours calculations
+- **searchLocationByName**: City geocoding
+- **getPlanetaryHourRecommendations**: Search in manuscripts
 
-### Ordem Caldéica dos Planetas
+### Chaldean Order of Planets
 ```
-Sol → Vênus → Mercúrio → Lua → Saturno → Júpiter → Marte
+Sun → Venus → Mercury → Moon → Saturn → Jupiter → Mars
 ```
 
-### Mapeamento Dias/Planetas
-- **Domingo**: Sol ☉
-- **Segunda**: Lua ☾  
-- **Terça**: Marte ♂
-- **Quarta**: Mercúrio ☿
-- **Quinta**: Júpiter ♃
-- **Sexta**: Vênus ♀
-- **Sábado**: Saturno ♄
+### Days/Planets Mapping
+- **Sunday**: Sun ☉
+- **Monday**: Moon ☾  
+- **Tuesday**: Mars ♂
+- **Wednesday**: Mercury ☿
+- **Thursday**: Jupiter ♃
+- **Friday**: Venus ♀
+- **Saturday**: Saturn ♄
 
-## 🌟 Contribuições
+## 🌟 Contributing
 
-Contribuições são bem-vindas! Por favor:
+Contributions are welcome! Please:
 
-1. **Fork** o repositório
-2. **Crie uma branch** para sua feature
-3. **Commit** suas mudanças
-4. **Push** para a branch
-5. **Abra um Pull Request**
+1. **Fork** the repository
+2. **Create a branch** for your feature
+3. **Commit** your changes
+4. **Push** to the branch
+5. **Open a Pull Request**
 
-## 📄 Licença
+## 📄 License
 
-Este projeto é open source. Veja o arquivo `LICENSE` para detalhes.
+This project is open source. See the `LICENSE` file for details.
 
-## 🙏 Agradecimentos
+## 🙏 Acknowledgments
 
-- **Manuscritos Medievais**: Fontes históricas preservadas
-- **APIs Gratuitas**: OpenStreetMap, BigDataCloud, Sunrise-sunset
-- **Comunidade Open Source**: shadcn/ui, Tailwind CSS, Next.js
+- **Medieval Manuscripts**: Preserved historical sources
+- **Free APIs**: OpenStreetMap, BigDataCloud, Sunrise-sunset
+- **Open Source Community**: shadcn/ui, Tailwind CSS, Next.js
 
 ---
 
-**Hygromanteia** - *Explorando as horas planetárias com precisão astronômica e sabedoria ancestral* ✨🔮 
+**Hygromanteia** - *Exploring planetary hours with astronomical precision and ancestral wisdom* ✨🔮 
