@@ -145,6 +145,37 @@ const MONTHS_PT = [
   "December",
 ]
 
+// Helper function to fetch location by IP, moved outside the component
+async function fetchLocationByIP(): Promise<Location | null> {
+  try {
+    // Using a reliable IP geolocation service
+    const response = await fetch("https://ipapi.co/json/")
+    if (!response.ok) {
+      throw new Error(`IP API request failed with status ${response.status}`)
+    }
+    const data = await response.json()
+    if (data.error) {
+      throw new Error(`IP API error: ${data.reason}`)
+    }
+    const lat = parseFloat(data.latitude)
+    const lon = parseFloat(data.longitude)
+    if (isNaN(lat) || isNaN(lon)) {
+      throw new Error("Invalid coordinates from IP API")
+    }
+    return {
+      latitude: lat,
+      longitude: lon,
+      city: data.city || "Unknown City",
+      state: data.region || "Unknown State",
+      country: data.country_name || "Unknown Country",
+      timezone: data.timezone || tzLookup(lat, lon),
+    }
+  } catch (error) {
+    console.error("IP-based geolocation failed:", error)
+    return null
+  }
+}
+
 export default function HygromanteiApp() {
   const [location, setLocation] = useState<Location | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -191,7 +222,7 @@ export default function HygromanteiApp() {
     loadPlanetaryData()
   }, [])
 
-  // Function to check geolocation permission status
+  // Check geolocation permission status
   const checkGeolocationPermission = useCallback(async () => {
     if (!navigator.permissions) {
       return 'unknown'
@@ -199,34 +230,19 @@ export default function HygromanteiApp() {
     
     try {
       const result = await navigator.permissions.query({ name: 'geolocation' })
+      
+      // macOS bug workaround: Safari/Chrome on macOS often returns 'prompt' even when denied
+      const isMacOS = navigator.userAgent.includes('Mac OS X')
+      if (isMacOS && result.state === 'prompt') {
+        console.log('macOS detected - permission state may be unreliable due to CoreLocation issues')
+      }
+      
       return result.state // 'granted', 'denied', 'prompt'
     } catch (error) {
       console.log("Error checking geolocation permission:", error)
       return 'unknown'
     }
   }, [])
-
-  // Function to use default location
-  const useDefaultLocation = useCallback(() => {
-    // If user has already manually chosen a location, do nothing
-    if (isManualLocation) {
-      return
-    }
-    
-    const newTimezone = "America/Sao_Paulo"
-    
-    const newLocation: Location = {
-      latitude: -23.5505,
-      longitude: -46.6333,
-      city: "São Paulo",
-      state: "SP",
-      country: "Brazil",
-      timezone: newTimezone,
-    }
-
-    // Just set the location - don't force date
-    setLocation(newLocation)
-  }, [isManualLocation])
 
   // Function to request geolocation in an optimized way
   const requestGeolocation = useCallback(async () => {
@@ -238,7 +254,6 @@ export default function HygromanteiApp() {
       setIsGeolocationAvailable(false)
       setGeolocationError("Geolocation not supported by this browser.")
       setIsDetectingLocation(false)
-      useDefaultLocation()
       return
     }
 
@@ -249,14 +264,13 @@ export default function HygromanteiApp() {
          if (permissionState === 'denied') {
        setGeolocationError("Geolocation permission denied. Use the location icon to manually enter your city.")
        setIsDetectingLocation(false)
-       useDefaultLocation()
        return
      }
 
-    // Optimized settings for different scenarios
+    // Optimized settings for different scenarios (macOS-friendly)
     const options = {
       enableHighAccuracy: true, // Try to get more precise location first
-      timeout: 8000, // More conservative timeout (8 seconds)
+      timeout: 15000, // Longer timeout for macOS (15 seconds)
       maximumAge: 300000, // Cache for 5 minutes
     }
 
@@ -264,7 +278,7 @@ export default function HygromanteiApp() {
       const lat = position.coords.latitude
       const lng = position.coords.longitude
 
-      console.log("Geolocation obtained successfully:", { lat, lng, accuracy: position.coords.accuracy })
+      console.log("Successfully upgraded to precise GPS location:", { lat, lng, accuracy: position.coords.accuracy })
 
       try {
         // Use reverse geocoding API to get city
@@ -294,128 +308,110 @@ export default function HygromanteiApp() {
         setGeolocationError(null) // Clear any previous error
         setIsDetectingLocation(false)
       } catch (error) {
-        console.log("Error getting city name, using coordinates:", error)
-        
-        // Just set the location - don't force date
-        const fallbackTimezone = "America/Sao_Paulo"
-        
-        setLocation({
-          latitude: lat,
-          longitude: lng,
-          city: "Location detected",
-          state: "",
-          country: "Brazil",
-          timezone: fallbackTimezone,
-        })
-        setGeolocationError("Location detected, but could not get city name.")
+        console.log("Error getting city name from GPS, keeping IP-based info:", error)
+        // Keep the more precise coordinates, but maybe update the error state
+        setLocation(prev => prev ? { ...prev, latitude: lat, longitude: lng } : null)
+        setGeolocationError("Precise location found, but could not get city name.")
         setIsDetectingLocation(false)
       }
     }
 
     const errorCallback = (error: GeolocationPositionError) => {
-      console.log("Geolocation error:", error.message, "Code:", error.code)
-      
-      let errorMessage = ""
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage = "Geolocation permission denied. Use the location icon to enter your city."
-          break
-        case error.POSITION_UNAVAILABLE:
-          // Don't show error for position unavailable, silently use default
-          errorMessage = ""
-          break
-        case error.TIMEOUT:
-          // Don't show error for timeout, silently use default
-          errorMessage = ""
-          break
-        default:
-          // Don't show error for other cases, silently use default
-          errorMessage = ""
-          break
-      }
-      
-      // Only set error if there's a message (only for permission denied)
-      if (errorMessage) {
-        setGeolocationError(errorMessage)
-      } else {
-        setGeolocationError(null)
-      }
+      // This is no longer critical, as we may already have a location from IP.
+      // We just log that the upgrade to GPS failed.
+      console.log(`Failed to upgrade to precise GPS location: ${error.message} (Code: ${error.code})`)
       setIsDetectingLocation(false)
-      useDefaultLocation()
     }
 
-    try {
-      // Try to get location with high accuracy first
-      navigator.geolocation.getCurrentPosition(successCallback, (error) => {
-        // If it fails with high accuracy, try with low accuracy
-        if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
-          console.log("Trying with low accuracy...")
-          const fallbackOptions = {
-            enableHighAccuracy: false,
-            timeout: 6000, // Shorter timeout for fallback
-            maximumAge: 300000,
-          }
+    // macOS CoreLocation bug workaround - add retry logic
+    let attempts = 0
+    const maxAttempts = 2
+    
+    const attemptGeolocation = (useHighAccuracy: boolean) => {
+      const currentOptions = {
+        ...options,
+        enableHighAccuracy: useHighAccuracy,
+        timeout: useHighAccuracy ? 15000 : 10000,
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        successCallback,
+        (error) => {
+          attempts++
+          console.log(`GPS attempt ${attempts} failed:`, error.message, `(accuracy: ${useHighAccuracy ? 'high' : 'low'})`)
           
-          navigator.geolocation.getCurrentPosition(successCallback, errorCallback, fallbackOptions)
-        } else {
-          errorCallback(error)
-        }
-      }, options)
-         } catch (error) {
-       console.log("General error in location detection:", error)
-       setGeolocationError("Error accessing geolocation.")
-       setIsDetectingLocation(false)
-       useDefaultLocation()
-     }
-  }, [useDefaultLocation, checkGeolocationPermission])
-
-  // Detect location and city - now with delay for better UX
-  useEffect(() => {
-    // If user has already manually chosen a location, do nothing
-    if (isManualLocation) {
-      return
-    }
-
-    const detectLocationWithDelay = async () => {
-      // Wait a bit for the page to fully load
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Check if it's the first load
-      const hasLocationStored = localStorage.getItem('hygromanteia-location-preference')
-      
-      if (hasLocationStored === 'manual') {
-        // If user manually chose a location, use it
-        const savedLocation = localStorage.getItem('hygromanteia-manual-location')
-        if (savedLocation) {
-          try {
-            const parsedLocation = JSON.parse(savedLocation)
-            setLocation(parsedLocation)
-            setIsManualLocation(true)
-          } catch (error) {
-            console.error('Error loading saved location:', error)
+          // macOS specific: Try different strategies
+          if (attempts < maxAttempts) {
+            if (useHighAccuracy) {
+              console.log("Retrying with low accuracy GPS...")
+              setTimeout(() => attemptGeolocation(false), 500) // Small delay before retry
+            } else {
+              errorCallback(error)
+            }
+          } else {
+            console.log("All GPS attempts failed. Keeping IP-based location.")
+            errorCallback(error)
           }
-        }
-        return
-      }
+        },
+        currentOptions
+      )
+    }
+    
+    // Start with high accuracy
+    attemptGeolocation(true)
+    
+  }, [checkGeolocationPermission])
+
+  const fetchAndSetLocation = useCallback(async () => {
+    setIsLocating(true)
+    setGeolocationError(null)
+
+    console.log("Attempting IP-based geolocation as primary source...")
+    const ipLocation = await fetchLocationByIP()
+
+    if (ipLocation) {
+      console.log("Success! Using IP-based location:", ipLocation)
+      setLocation(ipLocation)
       
-      if (hasLocationStored === 'default') {
-        // If user already chose to use default location, don't ask again
-        useDefaultLocation()
-        return
-      }
-
-      if (hasLocationStored === 'auto') {
-        // If user already allowed auto-detection, try again
-        await requestGeolocation()
-        return
-      }
-
-      // First time: try to detect automatically
+      console.log("Attempting to upgrade to precise GPS location...")
       await requestGeolocation()
+    } else {
+      console.error("FATAL: IP-based geolocation failed. App cannot determine location.")
+      setGeolocationError("Could not determine your location automatically. Please set it manually using the pin icon.")
+    }
+    setIsLocating(false)
+  }, [requestGeolocation]);
+
+  // Get location on mount: IP-first, then upgrade to GPS
+  useEffect(() => {
+    const initializeLocation = async () => {
+      // If user has a manually saved location, use it and stop.
+      const savedLocation = localStorage.getItem('hygromanteia-manual-location')
+      if (savedLocation) {
+        try {
+          console.log("Found manually saved location in storage.")
+          const parsedLocation = JSON.parse(savedLocation)
+          setLocation(parsedLocation)
+          setIsManualLocation(true)
+          setLoading(false)
+          return
+        } catch (error) {
+          console.error('Error loading saved location, proceeding with detection.', error)
+          localStorage.removeItem('hygromanteia-manual-location')
+        }
+      }
+
+      setLoading(true)
+      await fetchAndSetLocation()
+      setLoading(false)
     }
 
-    detectLocationWithDelay()
-  }, []) // Removing problematic dependencies
+    // Prevent re-running on dev hot reloads
+    if (!hasInitialized.current) {
+      hasInitialized.current = true
+      initializeLocation()
+    }
+  }, [fetchAndSetLocation])
 
   // Function to search location by name
   const searchLocationByName = useCallback(async (locationName: string) => {
@@ -439,16 +435,21 @@ export default function HygromanteiApp() {
         const result = data[0]
         const displayParts = result.display_name.split(',').map((part: string) => part.trim())
         
-        setLocation({
+        const newLocation: Location = {
           latitude: parseFloat(result.lat),
           longitude: parseFloat(result.lon),
           city: displayParts[0] || locationName,
           state: result.address?.state || displayParts[1] || "",
           country: result.address?.country || "Brazil",
           timezone: tzLookup(parseFloat(result.lat), parseFloat(result.lon)),
-        })
+        }
+
+        setLocation(newLocation)
         setIsLocationPickerOpen(false)
         setLocationInput("")
+        // Save manual location to localStorage
+        localStorage.setItem('hygromanteia-manual-location', JSON.stringify(newLocation))
+        setIsManualLocation(true)
       } else {
         alert("Location not found. Try again with another name or be more specific (e.g. 'New York, USA').")
       }
@@ -900,25 +901,21 @@ export default function HygromanteiApp() {
     setIsManuallyNavigating(false)
     setSelectedHourIndex(null)
     
-    // Salvar preferência do usuário para auto-detecção
-    localStorage.setItem('hygromanteia-location-preference', 'auto')
+    // Remover localização manual salva
     localStorage.removeItem('hygromanteia-manual-location')
-    
-    // Limpar erro anterior
-    setGeolocationError(null)
     
     // Fechar popover
     setIsLocationPickerOpen(false)
     
-    // Tentar detectar localização
-    await requestGeolocation()
-  }, [requestGeolocation])
+    // Tentar detectar localização usando o novo fluxo
+    await fetchAndSetLocation()
+  }, [fetchAndSetLocation])
 
   // Função para usar localização padrão permanentemente
   const useDefaultPermanently = useCallback(() => {
     localStorage.setItem('hygromanteia-location-preference', 'default')
-    useDefaultLocation()
-  }, [useDefaultLocation])
+    setIsManualLocation(true)
+  }, [])
 
   // Função para buscar sugestões de autocomplete
   const searchLocationSuggestions = useCallback(async (query: string) => {
@@ -1091,11 +1088,11 @@ export default function HygromanteiApp() {
     if (recommendations.length === 0) return null
 
     return (
-      <div className="mt-12 max-w-5xl mx-auto">
-        <h3 className="text-xl font-medium text-gray-800 mb-6 text-center">Manuscript Recommendations</h3>
+      <div className="mt-8 mx-auto">
+        <h3 className="text-xl font-medium text-gray-800 mb-4 text-center">Manuscript Recommendations</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {recommendations.map((rec, index) => (
-            <div key={index} className="bg-gray-50 rounded-lg p-4">
+            <div key={index} className="p-4">
               <p className="text-base font-bold italic text-gray-700 mb-2">{rec.name}</p>
               <p className="text-base text-gray-600 leading-relaxed">{rec.text}</p>
             </div>
@@ -1125,21 +1122,32 @@ export default function HygromanteiApp() {
   const daySymbol = PLANET_SYMBOLS[dayPlanetName]
 
   return (
-    <div className="min-h-screen bg-white relative">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 relative overflow-hidden">
+      {/* Ornate frame background */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden md:overflow-visible">
+        <div 
+          className="w-full max-w-7xl h-full max-h-[100vh] bg-contain bg-center bg-no-repeat opacity-30 transition-transform duration-500 ease-in-out transform-gpu rotate-90 scale-[2.2] md:rotate-0 md:scale-100"
+          style={{
+            backgroundImage: "url('/background3.svg')",
+            filter: "sepia(50%) saturate(130%) hue-rotate(10deg) brightness(1.2)"
+          }}
+        />
+      </div>
+
       {/* Data no canto superior esquerdo */}
-      <div className="absolute top-4 left-4 text-left">
+      <div className="absolute top-4 left-4 text-left z-20">
         <div className="flex items-center gap-2">
           <p className="text-sm md:text-base text-gray-600 tracking-tight">{getFormattedDate()}</p>
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>
-                              <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-1 hover:bg-gray-100"
-                  title="Select date"
-                >
-                  <CalendarIcon className="h-4 w-4 text-gray-400" />
-                </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1 hover:bg-gray-100"
+                title="Select date"
+              >
+                <CalendarIcon className="h-4 w-4 text-gray-400" />
+              </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
@@ -1153,9 +1161,11 @@ export default function HygromanteiApp() {
         </div>
       </div>
 
-      {/* Conteúdo principal centralizado */}
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
+      {/* Conteúdo principal centralizado dentro da moldura */}
+      <div className="flex items-center justify-center h-screen relative z-10">
+        <div className="text-center max-w-xs sm:max-w-sm md:max-w-4xl mx-auto px-4 md:px-8 mt-16">
+          {/* Frame content area - positioned to fit within the ornate border */}
+          <div className="p-4 md:p-10 my-12 relative">
           <div className="flex flex-col items-center gap-2 mb-8">
             <div className="flex items-center justify-center gap-4">
               {/* Controles de navegação */}
@@ -1319,8 +1329,9 @@ export default function HygromanteiApp() {
             </div>
           </div>
           
-                      {/* Manuscript recommendations */}
+            {/* Manuscript recommendations */}
             {renderRecommendations()}
+          </div>
         </div>
       </div>
     </div>
