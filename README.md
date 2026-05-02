@@ -1,164 +1,72 @@
-# 🌟 Hygromanteia - Planetary Hours
+# Hygromanteia
 
-A modern web application to calculate and display planetary hours based on your location, with integration of medieval historical manuscripts.
+**Live project:** https://hygromanteia.up.railway.app/
 
-## ✨ Features
+Hygromanteia is a web application for calculating planetary hours and reading them against manuscript-derived recommendations from the Hygromanteia tradition.
 
-### 🕒 Precise Planetary Hours
-- **Astronomical Calculations**: Based on actual sunrise and sunset times
-- **Geographic Precision**: Uses your current location or allows entering any city
-- **Chaldean Order**: Following classical astrological tradition
-- **Real-time Updates**: Timer that updates automatically
+The project combines astronomical timing, location-aware timezone handling, and a structured table of operations from three manuscript witnesses: Harleianus, Monacensis, and Gennadianus. The goal is to turn a historically dense reference system into a usable instrument: choose a place and date, inspect the current planetary hour, move through the full day, and compare the relevant manuscript entries.
 
-### 🌍 Smart Location
-- **Automatic Detection**: Browser GPS for precise location
-- **Manual Search**: Enter any city in the world
-- **Advanced Geocoding**: Integration with geolocation APIs
-- **Smart Fallback**: Approximate calculations if APIs fail
+## Core Functionality
 
-### 🗓️ Temporal Navigation
-- **Date Selector**: Explore planetary hours for any date
-- **Hour Navigation**: Buttons to navigate between the 24 hours
-- **Visual Progress**: Current hour progress bar
-- **Time Control**: Return to "now" with one click
+- Calculates the 12 daytime and 12 nighttime planetary hours from local sunrise and sunset.
+- Supports browser geolocation, IP-based fallback, and manual city search.
+- Tracks the current hour in the selected location and shows its start/end interval.
+- Allows navigation across hours and dates without losing the selected location.
+- Displays the ruling planet according to the Chaldean sequence.
+- Maps each planetary hour to the corresponding Harleianus, Monacensis, and Gennadianus recommendations.
 
-### 📜 Historical Manuscripts
-- **Three Medieval Manuscripts**:
-  - Harleianus
-  - Monacensis  
-  - Gennadianus
-- **Contextual Recommendations**: Based on current day and hour
-- **Smart Filtering**: Automatically removes empty entries
+## Historical Data
 
-## 🛠️ Tech Stack
+The manuscript table lives in `public/data/planetary_hours.json`.
 
-### Frontend
-- **Next.js 15.2.4** - React Framework with App Router
-- **React 19.1.0** - Main library
-- **TypeScript** - Static typing
-- **Tailwind CSS** - Utility styling
-- **shadcn/ui** - Components based on Radix UI
-
-### Integrated APIs
-- **OpenStreetMap Nominatim** - Geocoding
-- **BigDataCloud** - Reverse geolocation
-- **Sunrise-sunset.org** - Precise astronomical times
-- **Navigator.geolocation** - Browser GPS
-
-## 🚀 Deploy
-
-### Railway
-This project is optimized for Railway deployment:
-
-1. **Connect the repository** to Railway
-2. **Configure variables** (not needed for this project)
-3. **Automatic deploy** will run
-
-### Vercel
-Also compatible with Vercel:
-
-```bash
-npm install -g vercel
-vercel --prod
-```
-
-## 💻 Local Development
-
-### Prerequisites
-- Node.js 18+ 
-- pnpm (recommended) or npm
-
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/jorujes/hygromanteia.git
-cd hygromanteia
-
-# Install dependencies
-pnpm install
-
-# Run development server
-pnpm dev
-```
-
-Access `http://localhost:3000` in your browser.
-
-## 🎨 Visual Features
-
-### Responsive Design
-- **Mobile-first**: Works perfectly on mobile devices
-- **Breakpoints**: Automatic adaptation for tablet and desktop
-- **Scalable Typography**: Sizes that adjust to the device
-
-### Intuitive Interface
-- **Astrological Symbols**: Unicode for all planets
-- **Harmonious Colors**: Neutral and elegant palette
-- **Smooth Animations**: CSS transitions for better UX
-- **Visual Feedback**: Hover and loading states
-
-## 🔧 Configuration
-
-### Data Structure
-Historical manuscripts are in `public/data/planetary_hours.json`:
+Each row links a day, hour number, ruling planet, and available recommendation text from the three witnesses:
 
 ```json
 {
   "Dia": "Sunday",
-  "Hora": "1ª",
-  "Planeta": "Sol",
-  "Harleianus": "Manuscript recommendation...",
-  "Monacensis": "Manuscript recommendation...",
-  "Gennadianus": "Manuscript recommendation..."
+  "Hora": "2ª",
+  "Planeta": "Venus",
+  "Harleianus": "Begin praying",
+  "Monacensis": "It is good for getting the love of lords, great men and rulers",
+  "Gennadianus": "Useful for the love of a lord"
 }
 ```
 
-### Customization
-- **Colors**: Modify `tailwind.config.ts`
-- **Components**: Customize in `components/ui/`
-- **Calculations**: Adjust in `app/page.tsx`
+Missing entries are preserved explicitly instead of being silently inferred, so gaps between the manuscript witnesses remain visible in the interface and in the source data.
 
-## 📚 Technical Documentation
+## Technical Overview
 
-### Main Components
-- **HygromanteiApp**: Main component
-- **calculatePlanetaryHours**: Planetary hours calculations
-- **searchLocationByName**: City geocoding
-- **getPlanetaryHourRecommendations**: Search in manuscripts
+- Next.js with the App Router
+- React and TypeScript
+- Tailwind CSS and shadcn/ui components
+- Luxon and `tz-lookup` for timezone-aware time handling
+- Public geocoding and sunrise/sunset APIs for location and solar calculations
+- Static JSON data for manuscript recommendations
 
-### Chaldean Order of Planets
+## Local Development
+
+Requirements:
+
+- Node.js 18+
+- pnpm
+
+```bash
+git clone https://github.com/jorujes/hygromanteia.git
+cd hygromanteia
+pnpm install
+pnpm dev
 ```
-Sun → Venus → Mercury → Moon → Saturn → Jupiter → Mars
-```
 
-### Days/Planets Mapping
-- **Sunday**: Sun ☉
-- **Monday**: Moon ☾  
-- **Tuesday**: Mars ♂
-- **Wednesday**: Mercury ☿
-- **Thursday**: Jupiter ♃
-- **Friday**: Venus ♀
-- **Saturday**: Saturn ♄
+The development server runs at `http://localhost:3000`.
 
-## 🌟 Contributing
+## Deployment
 
-Contributions are welcome! Please:
+The production deployment is currently hosted on Railway:
 
-1. **Fork** the repository
-2. **Create a branch** for your feature
-3. **Commit** your changes
-4. **Push** to the branch
-5. **Open a Pull Request**
+https://hygromanteia.up.railway.app/
 
-## 📄 License
+The repository includes `railway.json` and can also run on standard Next.js hosting targets.
 
-This project is open source. See the `LICENSE` file for details.
+## Notes
 
-## 🙏 Acknowledgments
-
-- **Medieval Manuscripts**: Preserved historical sources
-- **Free APIs**: OpenStreetMap, BigDataCloud, Sunrise-sunset
-- **Open Source Community**: shadcn/ui, Tailwind CSS, Next.js
-
----
-
-**Hygromanteia** - *Exploring planetary hours with astronomical precision and ancestral wisdom* ✨🔮 
+Hygromanteia is intended as a research-oriented interface for exploring planetary-hour material. It presents historical recommendations as source data, not as modern advice or instruction.
