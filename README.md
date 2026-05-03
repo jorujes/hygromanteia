@@ -2,9 +2,15 @@
 
 **Live project:** https://hygromanteia.up.railway.app/
 
-Hygromanteia is a web application for calculating planetary hours and reading them against manuscript-derived recommendations from the Hygromanteia tradition.
+Hygromanteia is a research-oriented web application for working with planetary hours as they appear in the Greek Solomonic magical tradition.
 
-The project combines astronomical timing, location-aware timezone handling, and a structured table of operations from three manuscript witnesses: Harleianus, Monacensis, and Gennadianus. The goal is to turn a historically dense reference system into a usable instrument: choose a place and date, inspect the current planetary hour, move through the full day, and compare the relevant manuscript entries.
+The name comes from the *Hygromanteia*, also known as the *Magical Treatise of Solomon*: a late Byzantine Greek grimoire transmitted through several manuscript witnesses and later associated with the wider Solomonic tradition. Despite the title's literal association with water-divination, the textual tradition is much broader. It gathers material on ritual timing, planetary and daily operations, talismans, divination, conjuration, ritual implements, and other techniques that later became part of European grimoire culture.
+
+This project focuses on one narrow but important layer of that tradition: the tables of planetary hours. A planetary hour is not a fixed sixty-minute clock hour. It is a seasonal division of time: daylight, from local sunrise to local sunset, is divided into twelve parts; night, from sunset to the next sunrise, is divided into another twelve. Each segment is assigned to one of the seven classical planets in the Chaldean sequence. Because sunrise and sunset depend on date and location, the actual length of a planetary hour changes with place and season.
+
+The app turns that system into an inspectable interface. Choose a place and date, calculate the twenty-four planetary hours for that local solar day, see the current ruling planet, and compare the corresponding recommendations preserved in three manuscript witnesses: Harleianus, Monacensis, and Gennadianus.
+
+It is not a devotional app, a horoscope app, or a modern magical instruction manual. It is a tool for reading a historical timing system as data.
 
 ## Core Functionality
 
@@ -18,6 +24,14 @@ The project combines astronomical timing, location-aware timezone handling, and 
 ## Historical Data
 
 The manuscript table lives in `public/data/planetary_hours.json`.
+
+The dataset is arranged around three witnesses used for comparison:
+
+- **Harleianus**: a British Library manuscript witness commonly identified in the modern edition as Harleianus 5596.
+- **Monacensis**: a Munich Greek manuscript witness, listed in modern bibliographic references as Monacensis Gr. 70.
+- **Gennadianus**: a manuscript witness from the Gennadius Library tradition, listed as Gennadianus 45.
+
+The point of presenting the witnesses side by side is that the tradition is not a single clean table. Entries vary, some operations appear in one witness and not another, and the wording often shows the practical, compiled nature of the material.
 
 Each row links a day, hour number, ruling planet, and available recommendation text from the three witnesses:
 
@@ -33,6 +47,14 @@ Each row links a day, hour number, ruling planet, and available recommendation t
 ```
 
 Missing entries are preserved explicitly instead of being silently inferred, so gaps between the manuscript witnesses remain visible in the interface and in the source data.
+
+## Terminology
+
+- **Planetary hours**: a system of unequal hours based on sunrise and sunset rather than mechanical clock time.
+- **Classical planets**: the seven visible planetary bodies used in ancient and medieval astrology: Sun, Moon, Mercury, Venus, Mars, Jupiter, and Saturn.
+- **Chaldean sequence**: the repeating planetary order used to assign rulers to the hours.
+- **Witness**: a manuscript copy or textual branch used as evidence for reconstructing or comparing a tradition.
+- **Operation**: a short practical recommendation associated with a day, hour, or planetary ruler in the source material.
 
 ## Technical Overview
 
@@ -70,3 +92,9 @@ The repository includes `railway.json` and can also run on standard Next.js host
 ## Notes
 
 Hygromanteia is intended as a research-oriented interface for exploring planetary-hour material. It presents historical recommendations as source data, not as modern advice or instruction.
+
+## References
+
+- Ioannis Marathakis, *The Magical Treatise of Solomon, or Hygromanteia*.
+- [WorldCat catalogue record for the Marathakis edition](https://search.worldcat.org/title/963827647)
+- [Open British National Bibliography record](https://obnb.uk/p16042616-the-magical-treatise-of-solomon-or-hygromanteia-also-called-the-apotelesmatike-pragmateia-epistle-to-rehoboam-solomonike-being-a-translation-of-mss-harleianus-5596-bononiensis-3632-atheniens)
